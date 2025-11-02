@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { User } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabase';
+import { supabase, signOut as supabaseSignOut } from '@/lib/supabase';
 
 interface AuthState {
   user: User | null;
@@ -16,130 +16,129 @@ export function useAuth() {
     loading: true,
     error: null,
   });
+  const hasInitiallyLoadedRef = useRef(false);
 
   useEffect(() => {
-    // 초기 인증 상태 확인 - 직접 getSession 사용
+    let isMounted = true;
+
+    // 초기 인증 상태 확인
     const checkAuth = async () => {
       try {
-        // 먼저 세션 확인
-        const { data: sessionData, error: sessionError } =
-          await supabase.auth.getSession();
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession();
 
-        if (sessionError) {
-          // AuthSessionMissingError는 로그인하지 않은 상태에서는 정상
-          if (sessionError.message?.includes('Auth session missing')) {
-            setAuthState({
-              user: null,
-              loading: false,
-              error: null,
-            });
-            return;
-          }
+        if (!isMounted) return;
+
+        if (error) {
+          console.error('[useAuth] 세션 확인 오류:', error);
           setAuthState({
             user: null,
             loading: false,
-            error: '세션 오류가 발생했습니다.',
+            error: '인증 확인 중 오류가 발생했습니다.',
           });
           return;
         }
 
-        if (sessionData.session?.user) {
-          setAuthState({
-            user: sessionData.session.user,
-            loading: false,
-            error: null,
-          });
-        } else {
-          setAuthState({
-            user: null,
-            loading: false,
-            error: null,
-          });
-        }
-      } catch (error) {
-        // AuthSessionMissingError는 로그인하지 않은 상태에서는 정상
-        if (
-          error instanceof Error &&
-          error.message?.includes('Auth session missing')
-        ) {
-          setAuthState({
-            user: null,
-            loading: false,
-            error: null,
-          });
-          return;
-        }
         setAuthState({
-          user: null,
+          user: session?.user || null,
           loading: false,
-          error: '인증 확인 중 오류가 발생했습니다.',
+          error: null,
         });
+        hasInitiallyLoadedRef.current = true; // 초기 로드 완료 표시
+      } catch (error) {
+        console.error('[useAuth] 인증 확인 오류:', error);
+        if (isMounted) {
+          setAuthState({
+            user: null,
+            loading: false,
+            error: '인증 확인 중 오류가 발생했습니다.',
+          });
+          hasInitiallyLoadedRef.current = true; // 초기 로드 완료 표시 (에러여도 완료로 간주)
+        }
       }
     };
 
     checkAuth();
 
-    // 인증 상태 변경 감지
+    // onAuthStateChange로 인증 상태 변경 감지
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      switch (event) {
-        case 'SIGNED_IN':
-          if (session?.user) {
-            setAuthState({
-              user: session.user,
-              loading: false,
-              error: null,
-            });
-          }
-          break;
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!isMounted) return;
 
-        case 'SIGNED_OUT':
-          setAuthState({
-            user: null,
+      console.log('[useAuth] 인증 상태 변경:', event, {
+        hasSession: !!session,
+        hasUser: !!session?.user,
+        hasInitiallyLoaded: hasInitiallyLoadedRef.current,
+      });
+
+      // 초기 로드가 완료된 후에는 개발자 도구 열 때 발생하는 이벤트들을 완전히 무시
+      // 이렇게 하면 개발자 도구를 열고 닫을 때 loading 상태가 변경되지 않습니다
+      if (hasInitiallyLoadedRef.current) {
+        // 초기 로드 완료 후에는 모든 이벤트를 무시
+        if (
+          event === 'TOKEN_REFRESHED' ||
+          event === 'USER_UPDATED' ||
+          event === 'INITIAL_SESSION' ||
+          event === 'SIGNED_IN'
+        ) {
+          console.log('[useAuth] 초기 로드 완료 후 무시할 이벤트:', event);
+          return;
+        }
+
+        // 초기 로드 완료 후에는 다른 이벤트도 loading 상태를 변경하지 않음
+        console.log('[useAuth] 초기 로드 완료 후 이벤트 무시:', event);
+        return;
+      }
+
+      // 초기 로드 중에는 이벤트 처리
+      // TOKEN_REFRESHED, USER_UPDATED, INITIAL_SESSION 이벤트 무시
+      if (
+        event === 'TOKEN_REFRESHED' ||
+        event === 'USER_UPDATED' ||
+        event === 'INITIAL_SESSION'
+      ) {
+        console.log('[useAuth] 초기 로드 중 무시할 이벤트:', event);
+        return;
+      }
+
+      setAuthState((prev) => {
+        const user = session?.user || null;
+
+        // 사용자 상태가 변경되었을 때만 업데이트
+        const userChanged =
+          prev.user?.id !== user?.id ||
+          (prev.user === null && user !== null) ||
+          (prev.user !== null && user === null);
+
+        if (userChanged) {
+          console.log('[useAuth] 사용자 상태 변경:', {
+            from: prev.user?.id || null,
+            to: user?.id || null,
+          });
+          return {
+            user,
             loading: false,
             error: null,
-          });
-          break;
+          };
+        }
 
-        case 'TOKEN_REFRESHED':
-          // TOKEN_REFRESHED는 loading 상태 변경하지 않음
-          // (개발자 도구 열고 닫을 때 발생하는 불필요한 로딩 방지)
-          if (session?.user) {
-            setAuthState((prev) => ({
-              ...prev,
-              user: session.user,
-              error: null,
-              // loading은 변경하지 않음
-            }));
-          }
-          break;
-
-        case 'USER_UPDATED':
-          // USER_UPDATED도 loading 상태 변경하지 않음
-          if (session?.user) {
-            setAuthState((prev) => ({
-              ...prev,
-              user: session.user,
-              // loading과 error는 변경하지 않음
-            }));
-          }
-          break;
-      }
+        // 사용자가 같으면 상태 유지 (불필요한 리렌더링 방지)
+        return prev;
+      });
     });
 
     return () => {
+      isMounted = false;
       subscription.unsubscribe();
     };
   }, []);
 
   const signOut = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
-
-      if (error) {
-        throw error;
-      }
+      await supabaseSignOut();
 
       // 로컬 상태도 즉시 업데이트
       setAuthState({
@@ -147,7 +146,11 @@ export function useAuth() {
         loading: false,
         error: null,
       });
+
+      // 페이지 새로고침하여 완전한 상태 초기화
+      window.location.href = '/';
     } catch (error) {
+      console.error('로그아웃 오류:', error);
       setAuthState((prev) => ({
         ...prev,
         error: '로그아웃 중 오류가 발생했습니다.',

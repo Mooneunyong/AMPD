@@ -26,6 +26,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const isInitialLoadRef = useRef(true);
+  const hasInitiallyLoadedRef = useRef(false); // 초기 로드 완료 여부 추적
 
   const fetchUserProfile = async (skipLoading = false) => {
     try {
@@ -34,16 +35,19 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       }
       setError(null);
 
-      // 현재 사용자 정보 가져오기
+      // Supabase에서 현재 사용자 정보 가져오기
       const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
 
-      if (userError || !user) {
-        console.log('사용자 정보 없음 - 로그아웃 처리');
+      if (sessionError || !session || !session.user) {
+        console.log('세션 확인 실패 - 로그인하지 않은 상태');
+        setProfile(null);
         setLoading(false);
-        await handleUserNotFound();
+        setIsInitialLoad(false);
+        isInitialLoadRef.current = false;
+        hasInitiallyLoadedRef.current = true; // 초기 로드 완료 표시
         return;
       }
 
@@ -51,7 +55,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       const { data: profileData, error: profileError } = await supabase
         .from('user_profiles')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', session.user.id)
         .single();
 
       if (profileError) {
@@ -68,22 +72,22 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
           try {
             const displayName =
-              user.user_metadata?.full_name ||
-              user.user_metadata?.name ||
-              user.email?.split('@')[0] ||
+              session.user.user_metadata?.full_name ||
+              session.user.user_metadata?.name ||
+              session.user.email?.split('@')[0] ||
               'User';
 
             // Google OAuth는 picture 필드에 아바타 URL을 제공합니다
             const avatarUrl =
-              user.user_metadata?.avatar_url ||
-              user.user_metadata?.picture ||
+              session.user.user_metadata?.avatar_url ||
+              session.user.user_metadata?.picture ||
               null;
 
             const { data: newProfileData, error: createError } = await supabase
               .from('user_profiles')
               .insert({
-                user_id: user.id,
-                email: user.email || '',
+                user_id: session.user.id,
+                email: session.user.email || '',
                 display_name: displayName,
                 avatar_url: avatarUrl,
                 role: 'am',
@@ -95,20 +99,27 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             if (createError) {
               console.error('프로필 생성 오류:', createError);
               setLoading(false);
-              // 프로필 생성 실패 시 강제 로그아웃
-              await handleUserNotFound();
+              setIsInitialLoad(false);
+              isInitialLoadRef.current = false;
+              hasInitiallyLoadedRef.current = true; // 초기 로드 완료 표시 (에러여도 완료로 간주)
+              setError('프로필 생성에 실패했습니다.');
               return;
             }
 
             console.log('프로필 자동 생성 성공:', newProfileData);
             setProfile(newProfileData as UserProfile);
             setLoading(false);
+            setIsInitialLoad(false);
+            isInitialLoadRef.current = false;
+            hasInitiallyLoadedRef.current = true; // 초기 로드 완료 표시
             return;
           } catch (createErr) {
             console.error('프로필 생성 중 예외 발생:', createErr);
             setLoading(false);
-            // 프로필 생성 실패 시 강제 로그아웃
-            await handleUserNotFound();
+            setIsInitialLoad(false);
+            isInitialLoadRef.current = false;
+            hasInitiallyLoadedRef.current = true; // 초기 로드 완료 표시 (에러여도 완료로 간주)
+            setError('프로필 생성 중 오류가 발생했습니다.');
             return;
           }
         }
@@ -116,6 +127,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         // 다른 에러인 경우
         setError('프로필 정보를 가져올 수 없습니다.');
         setLoading(false);
+        setIsInitialLoad(false);
+        isInitialLoadRef.current = false;
+        hasInitiallyLoadedRef.current = true; // 초기 로드 완료 표시 (에러여도 완료로 간주)
         return;
       }
 
@@ -126,12 +140,14 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
       setIsInitialLoad(false);
       isInitialLoadRef.current = false;
+      hasInitiallyLoadedRef.current = true; // 초기 로드 완료 표시
     } catch (err) {
       console.error('사용자 프로필 조회 오류:', err);
       setError('프로필 정보를 가져오는 중 오류가 발생했습니다.');
       setLoading(false);
       setIsInitialLoad(false);
       isInitialLoadRef.current = false;
+      hasInitiallyLoadedRef.current = true; // 초기 로드 완료 표시 (에러여도 완료로 간주)
     }
   };
 
@@ -170,18 +186,22 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     // 초기 사용자 확인 및 프로필 가져오기
     const checkUserAndFetch = async () => {
       try {
+        // Supabase에서 사용자 정보 가져오기
         const {
-          data: { user },
-        } = await supabase.auth.getUser();
+          data: { session },
+        } = await supabase.auth.getSession();
 
         if (!isMounted) return;
 
-        if (user) {
+        if (session?.user) {
+          // fetchUserProfile 내부에서 setLoading(false)를 호출합니다
           await fetchUserProfile();
         } else {
+          // 세션이 없으면 로딩 완료로 표시
           setLoading(false);
           setIsInitialLoad(false);
           isInitialLoadRef.current = false;
+          hasInitiallyLoadedRef.current = true; // 초기 로드 완료 표시
         }
       } catch (error) {
         console.error('초기 사용자 확인 오류:', error);
@@ -194,44 +214,74 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
     checkUserAndFetch();
 
-    // Auth 상태 변경 감지 (사용자 삭제 시 강제 로그아웃 처리)
+    // onAuthStateChange로 인증 상태 변경 감지
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMounted) return;
 
-      // 세션이 없거나 사용자가 없으면 로그아웃 처리
-      if (event === 'SIGNED_OUT' || !session?.user) {
-        console.log('세션 만료 또는 사용자 삭제 감지 - 강제 로그아웃');
+      console.log('[UserProvider] 인증 상태 변경:', event, {
+        hasSession: !!session,
+        hasUser: !!session?.user,
+        hasInitiallyLoaded: hasInitiallyLoadedRef.current,
+      });
+
+      // 초기 로드가 완료된 후에는 개발자 도구 열 때 발생하는 이벤트들을 완전히 무시
+      // 이렇게 하면 개발자 도구를 열고 닫을 때 loading 상태가 변경되지 않습니다
+      if (hasInitiallyLoadedRef.current) {
+        // 초기 로드 완료 후에는 TOKEN_REFRESHED, USER_UPDATED, INITIAL_SESSION 등 무시
+        if (
+          event === 'TOKEN_REFRESHED' ||
+          event === 'USER_UPDATED' ||
+          event === 'INITIAL_SESSION'
+        ) {
+          console.log('[UserProvider] 초기 로드 완료 후 무시할 이벤트:', event);
+          return;
+        }
+
+        // 초기 로드 완료 후에는 SIGNED_IN 이벤트도 무시
+        // (이미 로그인된 상태이므로 중복 로그인 처리가 필요 없음)
+        if (event === 'SIGNED_IN') {
+          console.log('[UserProvider] 초기 로드 완료 후 SIGNED_IN 무시');
+          return;
+        }
+
+        // 초기 로드 완료 후에는 다른 이벤트도 loading 상태를 변경하지 않음
+        console.log('[UserProvider] 초기 로드 완료 후 이벤트 무시:', event);
+        return;
+      }
+
+      // 초기 로드 중에는 이벤트 처리
+      // TOKEN_REFRESHED, USER_UPDATED, INITIAL_SESSION 이벤트 무시
+      if (
+        event === 'TOKEN_REFRESHED' ||
+        event === 'USER_UPDATED' ||
+        event === 'INITIAL_SESSION'
+      ) {
+        console.log('[UserProvider] 초기 로드 중 무시할 이벤트:', event);
+        return;
+      }
+
+      // SIGNED_IN 이벤트 처리 (초기 로드 중에만)
+      if (event === 'SIGNED_IN' && session?.user) {
+        console.log('[UserProvider] 로그인 감지');
+        await fetchUserProfile();
+        return;
+      }
+
+      // SIGNED_OUT 이벤트 처리
+      if (event === 'SIGNED_OUT') {
+        console.log('[UserProvider] 로그아웃 감지');
         setProfile(null);
         setLoading(false);
         setIsInitialLoad(false);
+        isInitialLoadRef.current = false;
+        hasInitiallyLoadedRef.current = false; // 로그아웃 시 초기화
         return;
       }
 
-      // SIGNED_IN 이벤트만 fetchUserProfile 호출
-      if (event === 'SIGNED_IN') {
-        // 초기 로드가 완료되지 않은 경우에만 fetchUserProfile 호출
-        if (isInitialLoadRef.current) {
-          await fetchUserProfile();
-        }
-        return;
-      }
-
-      // TOKEN_REFRESHED나 USER_UPDATED 이벤트는 초기 로드가 완료된 후에는 완전히 무시
-      // (개발자 도구 열고 닫을 때 발생하는 불필요한 이벤트 방지)
-      if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-        // 초기 로드가 완료된 후에는 완전히 무시 (아무것도 하지 않음)
-        if (!isInitialLoadRef.current) {
-          return;
-        }
-        // 초기 로드 중에도 프로필이 이미 있으면 무시
-        if (profile) {
-          return;
-        }
-        // 초기 로드 중이고 프로필이 없을 때만 처리 (거의 발생하지 않음)
-        return;
-      }
+      // 다른 이벤트는 무시
+      console.log('[UserProvider] 처리하지 않은 이벤트:', event);
     });
 
     return () => {

@@ -4,23 +4,27 @@ import { Database } from './database.types';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
+// localStorage에 토큰 저장 (Supabase 기본 동작)
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    // detectSessionInUrl 제거 - 수동으로 처리하겠음
+    detectSessionInUrl: true, // URL에서 세션 자동 감지
   },
 });
 
-// Google OAuth 로그인 함수
+
+// Google OAuth 로그인 함수 - 간단하고 명확한 구조로 재작성
 export const signInWithGoogle = async () => {
-  // 환경에 따라 올바른 리다이렉트 URL 생성
-  const redirectUrl = 
-    typeof window !== 'undefined'
-      ? `${window.location.origin}/auth/callback`
-      : process.env.NEXT_PUBLIC_SITE_URL
-      ? `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`
-      : 'http://localhost:3000/auth/callback';
+  if (typeof window === 'undefined') {
+    throw new Error('signInWithGoogle은 클라이언트 사이드에서만 호출할 수 있습니다.');
+  }
+
+  // 클라이언트 사이드 콜백 페이지로 리다이렉트 (hash fragment 처리용)
+  // Supabase는 hash fragment나 query parameter로 토큰을 전달할 수 있음
+  const redirectUrl = `${window.location.origin}/auth/callback`;
+
+  console.log('[signInWithGoogle] OAuth 시작, redirectTo:', redirectUrl);
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
@@ -33,9 +37,17 @@ export const signInWithGoogle = async () => {
   });
 
   if (error) {
+    console.error('[signInWithGoogle] OAuth 에러:', error);
     throw error;
   }
 
+  if (!data.url) {
+    console.error('[signInWithGoogle] 리다이렉트 URL 없음');
+    throw new Error('OAuth 리다이렉트 URL을 받지 못했습니다.');
+  }
+
+  console.log('[signInWithGoogle] OAuth 리다이렉트 성공');
+  // Supabase가 자동으로 리다이렉트하므로 여기서는 데이터만 반환
   return data;
 };
 
@@ -135,10 +147,10 @@ export const safeGetUser = async () => {
 // 세션 완전 초기화
 export const clearAllSessions = async () => {
   try {
-    // Supabase 로그아웃
+    // Supabase 세션 종료
     await supabase.auth.signOut();
 
-    // 로컬 스토리지 정리
+    // localStorage 정리 (이전 세션 데이터 제거)
     if (typeof window !== 'undefined') {
       const keysToRemove = [];
       for (let i = 0; i < localStorage.length; i++) {
@@ -178,6 +190,7 @@ export const clearAllSessions = async () => {
 
     return { success: true };
   } catch (error) {
+    console.error('세션 정리 오류:', error);
     return { success: false, error };
   }
 };
