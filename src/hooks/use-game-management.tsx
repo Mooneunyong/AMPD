@@ -6,6 +6,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { parsePostgrestError, extractSupabaseError } from '@/lib/utils/api-errors';
 
 export interface Game {
   id: string;
@@ -220,78 +221,8 @@ export async function createGame(gameData: GameFormData): Promise<Game> {
     .single();
 
   if (error) {
-    console.error('게임 생성 오류:', error);
-    console.error('에러 타입:', typeof error);
-    console.error('에러 키:', Object.keys(error || {}));
-    console.error('에러 전체:', JSON.stringify(error, null, 2));
-    console.error('전송된 데이터:', JSON.stringify(gameData, null, 2));
-
-    // Supabase 에러 객체에서 메시지 추출
-    let errorMessage = '알 수 없는 오류';
-
-    // 에러 객체의 모든 속성을 확인
-    try {
-      // Supabase PostgREST 에러는 보통 이런 구조를 가짐
-      if (error && typeof error === 'object') {
-        // 직접 속성 접근
-        const message = (error as any).message;
-        const code = (error as any).code;
-        const details = (error as any).details;
-        const hint = (error as any).hint;
-
-        if (message && typeof message === 'string') {
-          errorMessage = message;
-        } else if (code && typeof code === 'string') {
-          errorMessage = `Error code: ${code}`;
-          if (details) errorMessage += ` - ${details}`;
-        } else if (details && typeof details === 'string') {
-          errorMessage = details;
-        } else if (hint && typeof hint === 'string') {
-          errorMessage = hint;
-        } else {
-          // 객체를 문자열로 변환 시도
-          const errorStr = JSON.stringify(
-            error,
-            (key, value) => {
-              // 순환 참조 방지
-              if (typeof value === 'object' && value !== null) {
-                return value;
-              }
-              return value;
-            },
-            2
-          );
-
-          if (errorStr && errorStr !== '{}') {
-            errorMessage = `Error details: ${errorStr}`;
-          } else {
-            // 객체의 모든 열거 가능한 속성 추출
-            const props: string[] = [];
-            for (const key in error) {
-              if (Object.prototype.hasOwnProperty.call(error, key)) {
-                props.push(`${key}: ${(error as any)[key]}`);
-              }
-            }
-            if (props.length > 0) {
-              errorMessage = props.join(', ');
-            }
-          }
-        }
-
-        // 힌트가 있으면 추가
-        const finalHint = (error as any).hint;
-        if (finalHint && typeof finalHint === 'string') {
-          errorMessage += ` (${finalHint})`;
-        }
-      } else if (typeof error === 'string') {
-        errorMessage = error;
-      }
-    } catch (parseError) {
-      console.error('에러 파싱 오류:', parseError);
-      errorMessage = `Failed to parse error: ${error}`;
-    }
-
-    throw new Error(`게임을 생성할 수 없습니다: ${errorMessage}`);
+    const errorMessage = parsePostgrestError(error);
+    throw new Error(`Failed to create game: ${errorMessage}`);
   }
 
   return {
