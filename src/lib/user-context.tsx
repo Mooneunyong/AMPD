@@ -53,27 +53,39 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           profileError.code === 'PGRST116' ||
           profileError.message?.includes('No rows found')
         ) {
+          // 사용자가 이미 auth.users에 있는 경우에만 프로필 자동 생성
+          // (첫 로그인 시)
+          // auth.users에 사용자가 없으면 삭제된 것으로 간주하여 강제 로그아웃
+          const { data: authUser, error: authUserError } =
+            await supabase.auth.getUser();
+
+          if (authUserError || !authUser?.user) {
+            console.log('Auth 사용자도 없음 - 강제 로그아웃');
+            await handleUserNotFound();
+            return;
+          }
+
+          // Auth 사용자는 있지만 프로필이 없는 경우 - 첫 로그인으로 간주하여 프로필 생성
           console.log('사용자 프로필이 존재하지 않음 - 자동 생성 시도');
           
-          // 프로필 자동 생성 시도
           try {
             const displayName = 
-              user.user_metadata?.full_name ||
-              user.user_metadata?.name ||
-              user.email?.split('@')[0] ||
+              authUser.user.user_metadata?.full_name ||
+              authUser.user.user_metadata?.name ||
+              authUser.user.email?.split('@')[0] ||
               'User';
             
             // Google OAuth는 picture 필드에 아바타 URL을 제공합니다
             const avatarUrl = 
-              user.user_metadata?.avatar_url ||
-              user.user_metadata?.picture ||
+              authUser.user.user_metadata?.avatar_url ||
+              authUser.user.user_metadata?.picture ||
               null;
             
             const { data: newProfileData, error: createError } = await supabase
               .from('user_profiles')
               .insert({
-                user_id: user.id,
-                email: user.email || '',
+                user_id: authUser.user.id,
+                email: authUser.user.email || '',
                 display_name: displayName,
                 avatar_url: avatarUrl,
                 role: 'am',
@@ -157,6 +169,51 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     };
 
     checkUserAndFetch();
+
+    // Auth 상태 변경 감지 (사용자 삭제 시 강제 로그아웃 처리)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event, session?.user?.id);
+
+      // 세션이 없거나 사용자가 없으면 로그아웃 처리
+      if (event === 'SIGNED_OUT' || !session?.user) {
+        console.log('세션 만료 또는 사용자 삭제 감지 - 강제 로그아웃');
+        setProfile(null);
+        setLoading(false);
+        return;
+      }
+
+      // 사용자가 있으면 프로필 확인
+      if (session.user) {
+        // 프로필 확인 - 삭제된 사용자인지 체크
+        const { data: profileData, error: profileError } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .single();
+
+        // 프로필이 없으면 사용자가 삭제된 것으로 간주
+        if (
+          profileError &&
+          (profileError.code === 'PGRST116' ||
+            profileError.message?.includes('No rows found'))
+        ) {
+          console.log('사용자 프로필이 없음 (삭제됨) - 강제 로그아웃');
+          await handleUserNotFound();
+          return;
+        }
+
+        // 프로필이 있으면 업데이트
+        if (profileData) {
+          setProfile(profileData as UserProfile);
+        }
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
