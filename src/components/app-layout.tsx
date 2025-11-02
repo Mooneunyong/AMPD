@@ -37,9 +37,16 @@ export function AppLayout({ children }: AppLayoutProps) {
   const globalLoading = authLoading || profileLoading;
 
   // URL에서 hash fragment 제거 (OAuth 콜백 후 남은 hash 제거)
+  // 단, /auth/callback 경로에서는 제거하지 않음 (Supabase가 세션을 추출할 수 있도록)
   useEffect(() => {
     if (typeof window !== 'undefined' && window.location.hash) {
-      // hash fragment가 있으면 제거
+      // /auth/callback 경로에서는 hash fragment를 제거하지 않음
+      // Supabase가 hash fragment에서 세션을 추출해야 함
+      if (window.location.pathname === '/auth/callback') {
+        return;
+      }
+      
+      // 다른 경로에서는 hash fragment 제거
       window.history.replaceState(
         {},
         document.title,

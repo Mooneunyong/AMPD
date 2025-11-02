@@ -19,13 +19,34 @@ export default function AuthCallback() {
         // Supabase가 자동으로 URL에서 세션을 감지하고 localStorage에 저장
         // detectSessionInUrl: true로 설정되어 있으므로 자동 처리됨
         
-        // 짧은 딜레이 후 세션 확인 (Supabase가 URL에서 세션을 처리할 시간 확보)
-        await new Promise((resolve) => setTimeout(resolve, 100));
+        // 배포 환경에서는 네트워크 지연으로 인해 더 긴 딜레이 필요
+        // Supabase가 hash fragment에서 세션을 추출하고 localStorage에 저장할 시간 확보
+        const delay = process.env.NODE_ENV === 'production' ? 500 : 200;
+        await new Promise((resolve) => setTimeout(resolve, delay));
         
-        // 세션 확인
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        // 세션 확인 (재시도 로직 포함)
+        let session = null;
+        let sessionError = null;
+        let retryCount = 0;
+        const maxRetries = 3;
+        
+        while (retryCount < maxRetries && !session) {
+          const result = await supabase.auth.getSession();
+          sessionError = result.error;
+          
+          if (result.data?.session?.user) {
+            session = result.data.session;
+            break;
+          }
+          
+          // 세션이 아직 준비되지 않았으면 재시도
+          if (retryCount < maxRetries - 1) {
+            await new Promise((resolve) => setTimeout(resolve, 300));
+            retryCount++;
+          }
+        }
 
-        if (sessionError) {
+        if (sessionError && !session) {
           console.error('[Auth Callback] 세션 확인 오류:', sessionError);
           setError('세션 확인 중 오류가 발생했습니다.');
           setLoading(false);
@@ -34,14 +55,22 @@ export default function AuthCallback() {
         }
 
         if (session && session.user) {
-          // URL 정리 (hash fragment 제거)
+          // 세션이 성공적으로 생성된 후 URL 정리 (hash fragment 제거)
           window.history.replaceState({}, document.title, '/auth/callback');
           
-          // 즉시 홈으로 리다이렉트 (hash fragment 없이)
+          // 짧은 딜레이 후 홈으로 리다이렉트 (세션이 localStorage에 저장될 시간 확보)
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          
           // window.location.replace를 사용하여 브라우저 히스토리에 남지 않도록 함
           window.location.replace('/');
         } else {
-          setError('로그인에 실패했습니다.');
+          // hash fragment에서 세션을 추출하지 못한 경우
+          console.error('[Auth Callback] 세션 없음:', {
+            hasHash: !!window.location.hash,
+            hashLength: window.location.hash?.length,
+            retryCount,
+          });
+          setError('로그인에 실패했습니다. 세션이 생성되지 않았습니다.');
           setLoading(false);
           setTimeout(() => router.push('/'), 3000);
         }
