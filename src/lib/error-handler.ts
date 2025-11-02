@@ -20,10 +20,6 @@ export interface ParsedError {
  * Supabase 에러를 파싱하여 사용자 친화적인 메시지로 변환
  */
 export function parseSupabaseError(error: any): ParsedError {
-  // 개발 환경에서만 로그 출력
-  if (process.env.NODE_ENV === 'development') {
-    console.log('Raw error:', error);
-  }
 
   // 네트워크 에러
   if (

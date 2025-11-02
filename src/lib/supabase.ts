@@ -24,8 +24,6 @@ export const signInWithGoogle = async () => {
   // Supabase는 hash fragment나 query parameter로 토큰을 전달할 수 있음
   const redirectUrl = `${window.location.origin}/auth/callback`;
 
-  console.log('[signInWithGoogle] OAuth 시작, redirectTo:', redirectUrl);
-
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
@@ -42,11 +40,8 @@ export const signInWithGoogle = async () => {
   }
 
   if (!data.url) {
-    console.error('[signInWithGoogle] 리다이렉트 URL 없음');
     throw new Error('OAuth 리다이렉트 URL을 받지 못했습니다.');
   }
-
-  console.log('[signInWithGoogle] OAuth 리다이렉트 성공');
   // Supabase가 자동으로 리다이렉트하므로 여기서는 데이터만 반환
   return data;
 };

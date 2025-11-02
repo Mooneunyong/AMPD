@@ -49,11 +49,6 @@ export function handleError(error: unknown, defaultMessage?: string): void {
   const errorMessage = defaultMessage || message;
   
   toast.error(errorMessage);
-  
-  // 개발 환경에서만 상세 로그 출력
-  if (process.env.NODE_ENV === 'development') {
-    console.error('Error details:', error);
-  }
 }
 
 /**

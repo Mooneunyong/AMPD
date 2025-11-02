@@ -64,34 +64,17 @@ export async function POST(request: NextRequest) {
           }
         }
         
-        console.log('App Store URL 분석:', { url, appId });
-        
         if (appId) {
           try {
             // iTunes Lookup API를 사용하여 앱 정보 가져오기
             const itunesUrl = `https://itunes.apple.com/lookup?id=${appId}`;
-            console.log('iTunes API 호출:', itunesUrl);
-            
             const itunesResponse = await fetch(itunesUrl);
-            console.log('iTunes API 응답 상태:', itunesResponse.status);
             
             if (itunesResponse.ok) {
               const itunesData = await itunesResponse.json();
-              console.log('iTunes API 응답:', JSON.stringify(itunesData, null, 2));
               
               if (itunesData.results && itunesData.results.length > 0) {
                 const appData = itunesData.results[0];
-                
-                console.log('iTunes API 앱 데이터:', {
-                  trackName: appData.trackName,
-                  primaryGenreName: appData.primaryGenreName,
-                  primaryGenreId: appData.primaryGenreId,
-                  genres: appData.genres,
-                  genre: appData.genre,
-                  genreIds: appData.genreIds,
-                  bundleId: appData.bundleId,
-                  artworkUrl512: appData.artworkUrl512,
-                });
                 
                 // 게임명 가져오기
                 if (appData.trackName && !gameInfo.game_name) {
@@ -113,18 +96,12 @@ export async function POST(request: NextRequest) {
                     gameInfo.logo_url = appData.artworkUrl60;
                   }
                 }
-              } else {
-                console.warn('iTunes API 결과가 비어있음');
               }
-            } else {
-              console.error('iTunes API 호출 실패:', itunesResponse.status, itunesResponse.statusText);
             }
           } catch (e) {
             // iTunes API 호출 실패 시 무시
             console.error('iTunes API 호출 중 오류:', e);
           }
-        } else {
-          console.warn('App ID를 추출할 수 없음:', url);
         }
 
         // 2. JSON-LD 스키마에서 정보 추출 시도 (iTunes API에서 가져오지 못한 정보만)
@@ -260,7 +237,6 @@ export async function POST(request: NextRequest) {
           }
         }
         
-        console.log('App Store 추출 결과:', gameInfo);
       } catch (error) {
         console.error('App Store 스크래핑 오류:', error);
       }
@@ -382,7 +358,6 @@ export async function POST(request: NextRequest) {
           }
         }
         
-        console.log('Google Play 추출 결과:', gameInfo);
       } catch (error) {
         console.error('Google Play 스크래핑 오류:', error);
       }

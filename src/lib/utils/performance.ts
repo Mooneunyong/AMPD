@@ -76,7 +76,8 @@ export function measureExecutionTime<T>(func: () => T, label?: string): T {
   const result = func();
   const end = performance.now();
 
-  if (label) {
+  // 성능 측정 로그는 개발 환경에서만 출력
+  if (label && process.env.NODE_ENV === 'development') {
     console.log(`${label}: ${end - start}ms`);
   }
 
@@ -94,7 +95,8 @@ export async function measureAsyncExecutionTime<T>(
   const result = await func();
   const end = performance.now();
 
-  if (label) {
+  // 성능 측정 로그는 개발 환경에서만 출력
+  if (label && process.env.NODE_ENV === 'development') {
     console.log(`${label}: ${end - start}ms`);
   }
 

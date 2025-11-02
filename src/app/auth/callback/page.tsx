@@ -16,13 +16,6 @@ export default function AuthCallback() {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
-        if (process.env.NODE_ENV === 'development') {
-          console.log('[Auth Callback] 페이지 로드', {
-            hash: window.location.hash,
-            search: window.location.search,
-          });
-        }
-
         // Supabase가 자동으로 URL에서 세션을 감지하고 localStorage에 저장
         // detectSessionInUrl: true로 설정되어 있으므로 자동 처리됨
         
@@ -41,13 +34,6 @@ export default function AuthCallback() {
         }
 
         if (session && session.user) {
-          if (process.env.NODE_ENV === 'development') {
-            console.log('[Auth Callback] 로그인 성공!', {
-              userId: session.user.id,
-              email: session.user.email,
-            });
-          }
-
           // URL 정리 (hash fragment 제거)
           window.history.replaceState({}, document.title, '/auth/callback');
           
@@ -55,9 +41,6 @@ export default function AuthCallback() {
           // AppLayout의 전역 로딩이 표시됩니다
           window.location.href = '/';
         } else {
-          if (process.env.NODE_ENV === 'development') {
-            console.log('[Auth Callback] 세션 없음');
-          }
           setError('로그인에 실패했습니다.');
           setLoading(false);
           setTimeout(() => router.push('/'), 3000);

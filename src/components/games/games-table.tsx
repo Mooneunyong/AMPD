@@ -63,7 +63,7 @@ export function GamesTable({
 
   const handleEditGame = (gameId: string) => {
     // TODO: 게임 수정 모달 구현
-    console.log('Edit game:', gameId);
+    // TODO: 게임 수정 기능 구현 필요
   };
 
   const handleOpenStore = (url: string) => {

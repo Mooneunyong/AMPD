@@ -48,9 +48,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const fetchUserProfile = async (skipLoading = false) => {
     // 이미 프로필을 가져오는 중이면 중복 호출 방지
     if (isFetchingProfileRef.current) {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[UserProvider] 프로필 가져오기 중 - 중복 호출 무시');
-      }
       return;
     }
 
@@ -68,9 +65,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       } = await supabase.auth.getSession();
 
       if (sessionError || !session || !session.user) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log('세션 확인 실패 - 로그인하지 않은 상태');
-        }
         setProfile(null);
         finishLoading();
         return;
@@ -91,12 +85,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           profileError.code === 'PGRST116' ||
           profileError.message?.includes('No rows found')
         ) {
-          // 사용자가 이미 auth.users에 있는 경우에만 프로필 자동 생성
-          // (첫 로그인 시)
-          if (process.env.NODE_ENV === 'development') {
-            console.log('사용자 프로필이 존재하지 않음 - 자동 생성 시도');
-          }
-
+        // 사용자가 이미 auth.users에 있는 경우에만 프로필 자동 생성
+        // (첫 로그인 시)
           try {
             const displayName =
               session.user.user_metadata?.full_name ||
@@ -130,9 +120,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
               return;
             }
 
-            if (process.env.NODE_ENV === 'development') {
-              console.log('프로필 자동 생성 성공:', newProfileData);
-            }
             setProfile(newProfileData as UserProfile);
             finishLoading();
             return;
@@ -171,9 +158,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   // 사용자가 존재하지 않을 때 처리하는 함수
   const handleUserNotFound = async () => {
     try {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('사용자 없음 - 모든 세션 정리 중...');
-      }
       await clearAllSessions();
 
       // 페이지 새로고침으로 완전한 상태 초기화
@@ -235,15 +219,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMounted) return;
 
-      // 개발 환경에서만 상세 로그 출력
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[UserProvider] 인증 상태 변경:', event, {
-          hasSession: !!session,
-          hasUser: !!session?.user,
-          hasInitiallyLoaded: hasInitiallyLoadedRef.current,
-        });
-      }
-
       // 초기 로드가 완료된 후에는 개발자 도구 열 때 발생하는 이벤트들을 완전히 무시
       // 이렇게 하면 개발자 도구를 열고 닫을 때 loading 상태가 변경되지 않습니다
       if (hasInitiallyLoadedRef.current) {
@@ -254,37 +229,22 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           event === 'INITIAL_SESSION' ||
           event === 'SIGNED_IN'
         ) {
-          if (process.env.NODE_ENV === 'development') {
-            console.log(
-              '[UserProvider] 초기 로드 완료 후 무시할 이벤트:',
-              event
-            );
-          }
           return;
         }
 
         // 초기 로드 완료 후에는 다른 이벤트도 loading 상태를 변경하지 않음
-        if (process.env.NODE_ENV === 'development') {
-          console.log('[UserProvider] 초기 로드 완료 후 이벤트 무시:', event);
-        }
         return;
       }
 
       // 초기 로드 중에는 이벤트 처리
       // TOKEN_REFRESHED, USER_UPDATED 이벤트 무시
       if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-        if (process.env.NODE_ENV === 'development') {
-          console.log('[UserProvider] 초기 로드 중 무시할 이벤트:', event);
-        }
         return;
       }
 
       // INITIAL_SESSION 이벤트 처리 (토큰이 localStorage에 있을 때 발생)
       // 초기 로드 중에만 처리하고, 이미 로딩이 완료되었으면 무시
       if (event === 'INITIAL_SESSION' && session?.user) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log('[UserProvider] 초기 세션 감지 - 프로필 가져오기');
-        }
         // checkUserAndFetch가 이미 실행 중이거나 완료되었으면 무시
         // isFetchingProfileRef로 중복 호출 방지
         if (!hasInitiallyLoadedRef.current && !isFetchingProfileRef.current) {
@@ -295,29 +255,18 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
       // SIGNED_IN 이벤트 처리 (초기 로드 중에만)
       if (event === 'SIGNED_IN' && session?.user) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log('[UserProvider] 로그인 감지');
-        }
         await fetchUserProfile();
         return;
       }
 
       // SIGNED_OUT 이벤트 처리
       if (event === 'SIGNED_OUT') {
-        if (process.env.NODE_ENV === 'development') {
-          console.log('[UserProvider] 로그아웃 감지');
-        }
         setProfile(null);
         setLoading(false);
         setIsInitialLoad(false);
         isInitialLoadRef.current = false;
         hasInitiallyLoadedRef.current = false; // 로그아웃 시 초기화
         return;
-      }
-
-      // 다른 이벤트는 무시
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[UserProvider] 처리하지 않은 이벤트:', event);
       }
     });
 
