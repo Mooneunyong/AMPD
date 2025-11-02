@@ -6,7 +6,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { parsePostgrestError, extractSupabaseError } from '@/lib/utils/api-errors';
+import { parsePostgrestError } from '@/lib/utils/api-errors';
 
 export interface Game {
   id: string;
