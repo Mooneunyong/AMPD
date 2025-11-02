@@ -36,8 +36,17 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   const globalLoading = authLoading || profileLoading;
 
-
-
+  // URL에서 hash fragment 제거 (OAuth 콜백 후 남은 hash 제거)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.hash) {
+      // hash fragment가 있으면 제거
+      window.history.replaceState(
+        {},
+        document.title,
+        window.location.pathname + window.location.search
+      );
+    }
+  }, []);
 
   // 세션 스토리지에서 에러 정보 확인
   useEffect(() => {

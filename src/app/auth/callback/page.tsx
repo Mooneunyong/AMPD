@@ -37,9 +37,9 @@ export default function AuthCallback() {
           // URL 정리 (hash fragment 제거)
           window.history.replaceState({}, document.title, '/auth/callback');
           
-          // 즉시 홈으로 리다이렉트 (로딩 화면 표시하지 않음)
-          // AppLayout의 전역 로딩이 표시됩니다
-          window.location.href = '/';
+          // 즉시 홈으로 리다이렉트 (hash fragment 없이)
+          // window.location.replace를 사용하여 브라우저 히스토리에 남지 않도록 함
+          window.location.replace('/');
         } else {
           setError('로그인에 실패했습니다.');
           setLoading(false);
