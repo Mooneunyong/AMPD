@@ -32,18 +32,17 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
       if (userError || !user) {
         console.log('사용자 정보 없음 - 로그아웃 처리');
+        setLoading(false);
         await handleUserNotFound();
         return;
       }
 
-      // 사용자 프로필 정보 가져오기 - 병렬로 처리
-      const profilePromise = supabase
+      // 사용자 프로필 정보 가져오기
+      const { data: profileData, error: profileError } = await supabase
         .from('user_profiles')
         .select('*')
         .eq('user_id', user.id)
         .single();
-
-      const { data: profileData, error: profileError } = await profilePromise;
 
       if (profileError) {
         console.error('프로필 조회 오류:', profileError);
@@ -55,37 +54,26 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         ) {
           // 사용자가 이미 auth.users에 있는 경우에만 프로필 자동 생성
           // (첫 로그인 시)
-          // auth.users에 사용자가 없으면 삭제된 것으로 간주하여 강제 로그아웃
-          const { data: authUser, error: authUserError } =
-            await supabase.auth.getUser();
-
-          if (authUserError || !authUser?.user) {
-            console.log('Auth 사용자도 없음 - 강제 로그아웃');
-            await handleUserNotFound();
-            return;
-          }
-
-          // Auth 사용자는 있지만 프로필이 없는 경우 - 첫 로그인으로 간주하여 프로필 생성
           console.log('사용자 프로필이 존재하지 않음 - 자동 생성 시도');
           
           try {
             const displayName = 
-              authUser.user.user_metadata?.full_name ||
-              authUser.user.user_metadata?.name ||
-              authUser.user.email?.split('@')[0] ||
+              user.user_metadata?.full_name ||
+              user.user_metadata?.name ||
+              user.email?.split('@')[0] ||
               'User';
             
             // Google OAuth는 picture 필드에 아바타 URL을 제공합니다
             const avatarUrl = 
-              authUser.user.user_metadata?.avatar_url ||
-              authUser.user.user_metadata?.picture ||
+              user.user_metadata?.avatar_url ||
+              user.user_metadata?.picture ||
               null;
             
             const { data: newProfileData, error: createError } = await supabase
               .from('user_profiles')
               .insert({
-                user_id: authUser.user.id,
-                email: authUser.user.email || '',
+                user_id: user.id,
+                email: user.email || '',
                 display_name: displayName,
                 avatar_url: avatarUrl,
                 role: 'am',
@@ -96,6 +84,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
             if (createError) {
               console.error('프로필 생성 오류:', createError);
+              setLoading(false);
               // 프로필 생성 실패 시 강제 로그아웃
               await handleUserNotFound();
               return;
@@ -103,25 +92,31 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
             console.log('프로필 자동 생성 성공:', newProfileData);
             setProfile(newProfileData as UserProfile);
+            setLoading(false);
             return;
           } catch (createErr) {
             console.error('프로필 생성 중 예외 발생:', createErr);
+            setLoading(false);
             // 프로필 생성 실패 시 강제 로그아웃
             await handleUserNotFound();
             return;
           }
         }
 
+        // 다른 에러인 경우
         setError('프로필 정보를 가져올 수 없습니다.');
         setLoading(false);
         return;
       }
 
-      setProfile(profileData as UserProfile);
+      // 프로필이 정상적으로 조회된 경우
+      if (profileData) {
+        setProfile(profileData as UserProfile);
+      }
+      setLoading(false);
     } catch (err) {
       console.error('사용자 프로필 조회 오류:', err);
       setError('프로필 정보를 가져오는 중 오류가 발생했습니다.');
-    } finally {
       setLoading(false);
     }
   };
@@ -156,15 +151,27 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    // 사용자가 로그인되어 있을 때만 프로필을 가져옴
+    let isMounted = true;
+
+    // 초기 사용자 확인 및 프로필 가져오기
     const checkUserAndFetch = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        fetchUserProfile();
-      } else {
-        setLoading(false);
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        
+        if (!isMounted) return;
+
+        if (user) {
+          await fetchUserProfile();
+        } else {
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error('초기 사용자 확인 오류:', error);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
@@ -174,6 +181,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!isMounted) return;
+
       console.log('Auth state changed:', event, session?.user?.id);
 
       // 세션이 없거나 사용자가 없으면 로그아웃 처리
@@ -184,34 +193,89 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // 사용자가 있으면 프로필 확인
-      if (session.user) {
-        // 프로필 확인 - 삭제된 사용자인지 체크
-        const { data: profileData, error: profileError } = await supabase
-          .from('user_profiles')
-          .select('*')
-          .eq('user_id', session.user.id)
-          .single();
+      // SIGNED_IN 이벤트만 fetchUserProfile 호출 (중복 방지)
+      if (event === 'SIGNED_IN') {
+        await fetchUserProfile();
+        return;
+      }
 
-        // 프로필이 없으면 사용자가 삭제된 것으로 간주
-        if (
-          profileError &&
-          (profileError.code === 'PGRST116' ||
-            profileError.message?.includes('No rows found'))
-        ) {
-          console.log('사용자 프로필이 없음 (삭제됨) - 강제 로그아웃');
-          await handleUserNotFound();
+      // TOKEN_REFRESHED나 USER_UPDATED 이벤트는 프로필만 간단히 업데이트
+      if ((event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') && session.user) {
+        // 프로필이 이미 있으면 그대로 유지 (재조회 불필요)
+        if (profile && profile.user_id === session.user.id) {
           return;
         }
+        
+        // 프로필이 없거나 변경되었을 때만 조회
+        try {
+          const { data: profileData, error: profileError } = await supabase
+            .from('user_profiles')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .single();
 
-        // 프로필이 있으면 업데이트
-        if (profileData) {
-          setProfile(profileData as UserProfile);
+          if (!isMounted) return;
+
+          if (profileError && profileError.code === 'PGRST116') {
+            // 프로필이 없으면 자동 생성 시도
+            try {
+              const displayName = 
+                session.user.user_metadata?.full_name ||
+                session.user.user_metadata?.name ||
+                session.user.email?.split('@')[0] ||
+                'User';
+              
+              const avatarUrl = 
+                session.user.user_metadata?.avatar_url ||
+                session.user.user_metadata?.picture ||
+                null;
+              
+              const { data: newProfileData, error: createError } = await supabase
+                .from('user_profiles')
+                .insert({
+                  user_id: session.user.id,
+                  email: session.user.email || '',
+                  display_name: displayName,
+                  avatar_url: avatarUrl,
+                  role: 'am',
+                  is_active: false,
+                })
+                .select()
+                .single();
+
+              if (!isMounted) return;
+
+              if (createError) {
+                console.error('프로필 자동 생성 오류:', createError);
+                await handleUserNotFound();
+                return;
+              }
+
+              setProfile(newProfileData as UserProfile);
+              setLoading(false);
+            } catch (createErr) {
+              console.error('프로필 생성 중 예외 발생:', createErr);
+              if (isMounted) {
+                await handleUserNotFound();
+              }
+            }
+          } else if (profileData) {
+            setProfile(profileData as UserProfile);
+            setLoading(false);
+          } else {
+            setLoading(false);
+          }
+        } catch (err) {
+          console.error('프로필 조회 오류:', err);
+          if (isMounted) {
+            setLoading(false);
+          }
         }
       }
     });
 
     return () => {
+      isMounted = false;
       subscription.unsubscribe();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
