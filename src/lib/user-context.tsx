@@ -63,13 +63,19 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
               user.email?.split('@')[0] ||
               'User';
             
+            // Google OAuth는 picture 필드에 아바타 URL을 제공합니다
+            const avatarUrl = 
+              user.user_metadata?.avatar_url ||
+              user.user_metadata?.picture ||
+              null;
+            
             const { data: newProfileData, error: createError } = await supabase
               .from('user_profiles')
               .insert({
                 user_id: user.id,
                 email: user.email || '',
                 display_name: displayName,
-                avatar_url: user.user_metadata?.avatar_url || null,
+                avatar_url: avatarUrl,
                 role: 'am',
                 is_active: false, // 첫 로그인 시 비활성 상태
               })
