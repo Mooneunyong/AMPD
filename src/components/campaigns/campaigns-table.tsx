@@ -58,7 +58,7 @@ const COLUMN_WIDTHS = {
   gameName: '250px',
   assignedUser: '160px',
   region: '120px',
-  mmp: '120px',
+  mmp: '80px',
   type: '120px',
   dateRange: '200px',
   status: '100px',
