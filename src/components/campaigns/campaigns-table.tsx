@@ -153,17 +153,13 @@ const GameImageCell = React.memo(
     if (imageUrl) {
       return (
         <div className='w-6 h-6 rounded-lg border border-border overflow-hidden flex items-center justify-center bg-muted flex-shrink-0'>
-          <img
+          <Image
             src={imageUrl}
             alt={alt}
+            width={24}
+            height={24}
             className='max-w-full max-h-full w-auto h-auto object-contain'
-            onError={(e) => {
-              const parent = e.currentTarget.parentElement;
-              if (parent) {
-                parent.innerHTML =
-                  '<span class="text-[8px] text-muted-foreground">-</span>';
-              }
-            }}
+            unoptimized
           />
         </div>
       );
@@ -482,19 +478,25 @@ function CampaignTableRow({
                           rel='noopener noreferrer'
                           className='w-full'
                         >
-                          <img
+                          <Image
                             src={imageUrl}
                             alt={campaign.game_name || 'Game'}
+                            width={256}
+                            height={128}
                             className='w-full h-32 object-cover rounded-md'
+                            unoptimized
                           />
                         </a>
                         <div className='flex flex-col gap-1.5 w-full'>
                           <div className='flex items-center gap-1.5 justify-start w-full'>
                             {storeFaviconUrl && (
-                              <img
+                              <Image
                                 src={storeFaviconUrl}
                                 alt='Store'
+                                width={16}
+                                height={16}
                                 className='w-4 h-4 flex-shrink-0'
+                                unoptimized
                               />
                             )}
                             <span className='text-sm font-medium text-left truncate flex-1 min-w-0'>

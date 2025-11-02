@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { toast } from 'sonner';
 import {
   TrashIcon,
@@ -156,17 +157,13 @@ function GameTableRow({
                     </div>
                   ) : imageUrl ? (
                     <div className='w-6 h-6 rounded-lg border border-border overflow-hidden flex items-center justify-center bg-muted flex-shrink-0'>
-                      <img
+                      <Image
                         src={imageUrl}
                         alt={game.game_name}
+                        width={24}
+                        height={24}
                         className='max-w-full max-h-full w-auto h-auto object-contain'
-                        onError={(e) => {
-                          const parent = e.currentTarget.parentElement;
-                          if (parent) {
-                            parent.innerHTML =
-                              '<span class="text-[8px] text-muted-foreground">-</span>';
-                          }
-                        }}
+                        unoptimized
                       />
                     </div>
                   ) : (
