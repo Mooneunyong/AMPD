@@ -19,7 +19,61 @@ export default function AuthCallback() {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
-        // URL 파라미터에서 에러 정보 확인
+        // URL fragment에서 토큰 정보 추출 (hash 기반 인증)
+        if (typeof window !== 'undefined' && window.location.hash) {
+          const hashParams = new URLSearchParams(window.location.hash.substring(1));
+          const accessToken = hashParams.get('access_token');
+          const refreshToken = hashParams.get('refresh_token');
+          const errorParam = hashParams.get('error');
+          const errorDescription = hashParams.get('error_description');
+
+          // 에러가 있으면 처리
+          if (errorParam) {
+            const parsedError = parseSupabaseError({
+              message: '로그인 과정에서 오류가 발생했습니다.',
+              code: errorParam,
+              details: errorDescription || '다시 시도해주세요.',
+            });
+            setError(parsedError);
+            setLoading(false);
+
+            // URL 정리
+            window.history.replaceState({}, document.title, '/auth/callback');
+
+            setTimeout(() => {
+              router.push('/');
+            }, 3000);
+            return;
+          }
+
+          // 토큰이 있으면 세션 설정
+          if (accessToken && refreshToken) {
+            const { data: sessionData, error: sessionError } =
+              await supabase.auth.setSession({
+                access_token: accessToken,
+                refresh_token: refreshToken,
+              });
+
+            if (sessionError) {
+              const parsedError = parseSupabaseError({
+                message: '세션 설정 중 오류가 발생했습니다.',
+                details: '다시 시도해주세요.',
+              });
+              setError(parsedError);
+              setLoading(false);
+              return;
+            }
+
+            if (sessionData.session?.user) {
+              // URL 정리 (토큰 정보 제거)
+              window.history.replaceState({}, document.title, '/auth/callback');
+              router.push('/');
+              return;
+            }
+          }
+        }
+
+        // URL 파라미터에서 에러 정보 확인 (query string)
         const errorParam = searchParams.get('error');
         const errorCode = searchParams.get('error_code');
         const errorDescription = searchParams.get('error_description');
@@ -27,8 +81,8 @@ export default function AuthCallback() {
         if (errorParam) {
           const parsedError = parseSupabaseError({
             message: '로그인 과정에서 오류가 발생했습니다.',
-            code: errorCode,
-            details: '다시 시도해주세요.',
+            code: errorCode || errorParam,
+            details: errorDescription || '다시 시도해주세요.',
           });
           setError(parsedError);
           setLoading(false);
@@ -39,7 +93,7 @@ export default function AuthCallback() {
           return;
         }
 
-        // 코드 파라미터가 있으면 먼저 세션 교환 시도
+        // 코드 파라미터가 있으면 세션 교환 시도 (PKCE flow)
         const code = searchParams.get('code');
         if (code) {
           const { data: exchangeData, error: exchangeError } =

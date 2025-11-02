@@ -29,6 +29,8 @@ export const signInWithGoogle = async () => {
       queryParams: {
         prompt: 'select_account',
       },
+      // PKCE 플로우 강제 사용 (더 안전함)
+      flowType: 'pkce',
     },
   });
 
