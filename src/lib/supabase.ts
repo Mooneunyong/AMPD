@@ -31,6 +31,10 @@ export const signInWithGoogle = async () => {
       queryParams: {
         prompt: 'select_account',
       },
+      // skipBrowserRedirect: true를 설정하면 자동 리다이렉트를 방지하고
+      // URL을 반환하므로, 수동으로 window.location.href를 사용하여
+      // 현재 창에서 리다이렉트되도록 합니다.
+      skipBrowserRedirect: true,
     },
   });
 
@@ -42,8 +46,10 @@ export const signInWithGoogle = async () => {
   if (!data.url) {
     throw new Error('OAuth 리다이렉트 URL을 받지 못했습니다.');
   }
-  // Supabase가 자동으로 리다이렉트하므로 여기서는 데이터만 반환
-  return data;
+
+  // 현재 창에서 리다이렉트 (새 탭으로 열리지 않도록)
+  // window.location.href는 현재 창을 리다이렉트합니다
+  window.location.href = data.url;
 };
 
 // 로그아웃 함수
