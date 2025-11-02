@@ -16,7 +16,6 @@ export function useAuth() {
     loading: true,
     error: null,
   });
-  const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
 
   useEffect(() => {
     // 초기 인증 상태 확인 - 직접 getSession 사용
@@ -34,7 +33,6 @@ export function useAuth() {
               loading: false,
               error: null,
             });
-            setHasInitiallyLoaded(true);
             return;
           }
           setAuthState({
@@ -42,7 +40,6 @@ export function useAuth() {
             loading: false,
             error: '세션 오류가 발생했습니다.',
           });
-          setHasInitiallyLoaded(true);
           return;
         }
 
@@ -59,7 +56,6 @@ export function useAuth() {
             error: null,
           });
         }
-        setHasInitiallyLoaded(true);
       } catch (error) {
         // AuthSessionMissingError는 로그인하지 않은 상태에서는 정상
         if (
@@ -71,7 +67,6 @@ export function useAuth() {
             loading: false,
             error: null,
           });
-          setHasInitiallyLoaded(true);
           return;
         }
         setAuthState({
@@ -79,7 +74,6 @@ export function useAuth() {
           loading: false,
           error: '인증 확인 중 오류가 발생했습니다.',
         });
-        setHasInitiallyLoaded(true);
       }
     };
 
@@ -97,7 +91,6 @@ export function useAuth() {
               loading: false,
               error: null,
             });
-            setHasInitiallyLoaded(true);
           }
           break;
 
@@ -107,11 +100,11 @@ export function useAuth() {
             loading: false,
             error: null,
           });
-          setHasInitiallyLoaded(true);
           break;
 
         case 'TOKEN_REFRESHED':
-          // TOKEN_REFRESHED는 초기 로드 완료 후에는 loading 상태 변경하지 않음
+          // TOKEN_REFRESHED는 loading 상태 변경하지 않음
+          // (개발자 도구 열고 닫을 때 발생하는 불필요한 로딩 방지)
           if (session?.user) {
             setAuthState((prev) => ({
               ...prev,
@@ -123,7 +116,7 @@ export function useAuth() {
           break;
 
         case 'USER_UPDATED':
-          // USER_UPDATED도 초기 로드 완료 후에는 loading 상태 변경하지 않음
+          // USER_UPDATED도 loading 상태 변경하지 않음
           if (session?.user) {
             setAuthState((prev) => ({
               ...prev,
