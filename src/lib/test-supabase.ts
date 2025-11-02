@@ -14,12 +14,12 @@ export async function testConnection() {
   try {
     console.log('=== Supabase 연결 테스트 시작 ===');
 
-    // 1. 기본 연결 테스트
+    // 1. 기본 연결 테스트 (user_profiles 테이블 사용)
     const { data, error } = await supabase
-      .from('_supabase_migrations')
-      .select('*')
+      .from('user_profiles')
+      .select('user_id')
       .limit(1);
-    console.log('마이그레이션 테이블 접근:', { data, error });
+    console.log('연결 테스트:', { data, error });
 
     // 2. 인증 설정 확인
     const { data: authData, error: authError } = await supabase.auth.getSession();

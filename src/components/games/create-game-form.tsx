@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import Image from 'next/image';
 import { toast } from 'sonner';
 import { Loader2, LoaderCircle, Copy, Check } from 'lucide-react';
 import { Label } from '@/components/ui/label';
@@ -114,13 +115,16 @@ const GameInfoField = ({
       <div className='relative'>
         {logoUrl && logoUrl.trim().length > 0 && id === 'game_name' && (
           <div className='absolute left-2 top-1/2 -translate-y-1/2 z-10 flex items-center'>
-            <img
+            <Image
               src={logoUrl}
               alt={value || 'Game logo'}
+              width={24}
+              height={24}
               className='w-6 h-6 rounded-lg object-cover border border-border'
               onError={(e) => {
                 e.currentTarget.parentElement!.style.display = 'none';
               }}
+              unoptimized
             />
           </div>
         )}
