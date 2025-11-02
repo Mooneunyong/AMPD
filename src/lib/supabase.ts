@@ -14,14 +14,12 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
 });
 
 
-// Google OAuth 로그인 함수 - 간단하고 명확한 구조로 재작성
+// Google OAuth 로그인 함수 - 간단한 방식
 export const signInWithGoogle = async () => {
   if (typeof window === 'undefined') {
     throw new Error('signInWithGoogle은 클라이언트 사이드에서만 호출할 수 있습니다.');
   }
 
-  // 클라이언트 사이드 콜백 페이지로 리다이렉트 (hash fragment 처리용)
-  // Supabase는 hash fragment나 query parameter로 토큰을 전달할 수 있음
   const redirectUrl = `${window.location.origin}/auth/callback`;
 
   const { data, error } = await supabase.auth.signInWithOAuth({
@@ -31,10 +29,6 @@ export const signInWithGoogle = async () => {
       queryParams: {
         prompt: 'select_account',
       },
-      // skipBrowserRedirect: true를 설정하면 자동 리다이렉트를 방지하고
-      // URL을 반환하므로, 수동으로 window.location.href를 사용하여
-      // 현재 창에서 리다이렉트되도록 합니다.
-      skipBrowserRedirect: true,
     },
   });
 
@@ -43,13 +37,8 @@ export const signInWithGoogle = async () => {
     throw error;
   }
 
-  if (!data.url) {
-    throw new Error('OAuth 리다이렉트 URL을 받지 못했습니다.');
-  }
-
-  // 현재 창에서 리다이렉트 (새 탭으로 열리지 않도록)
-  // window.location.href는 현재 창을 리다이렉트합니다
-  window.location.href = data.url;
+  // Supabase가 자동으로 리다이렉트함
+  return data;
 };
 
 // 로그아웃 함수
