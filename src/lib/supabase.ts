@@ -88,6 +88,14 @@ export const getUserProfile = async (userId: string) => {
   return data;
 };
 
+// AuthSessionMissingError 체크 헬퍼 함수
+const isAuthSessionMissingError = (error: unknown): boolean => {
+  return (
+    error instanceof Error &&
+    error.message?.includes('Auth session missing')
+  );
+};
+
 // 안전한 세션 확인 함수 (에러를 발생시키지 않음)
 export const safeGetSession = async () => {
   try {
@@ -95,7 +103,7 @@ export const safeGetSession = async () => {
 
     if (error) {
       // AuthSessionMissingError는 로그인하지 않은 상태에서는 정상
-      if (error.message?.includes('Auth session missing')) {
+      if (isAuthSessionMissingError(error)) {
         return { success: true, session: null, user: null };
       }
       return { success: false, error };
@@ -107,11 +115,7 @@ export const safeGetSession = async () => {
       user: data.session?.user || null,
     };
   } catch (error) {
-    // AuthSessionMissingError는 로그인하지 않은 상태에서는 정상
-    if (
-      error instanceof Error &&
-      error.message?.includes('Auth session missing')
-    ) {
+    if (isAuthSessionMissingError(error)) {
       return { success: true, session: null, user: null };
     }
     return { success: false, error };
@@ -125,7 +129,7 @@ export const safeGetUser = async () => {
 
     if (error) {
       // AuthSessionMissingError는 로그인하지 않은 상태에서는 정상
-      if (error.message?.includes('Auth session missing')) {
+      if (isAuthSessionMissingError(error)) {
         return { success: true, user: null };
       }
       return { success: false, error };
@@ -133,15 +137,30 @@ export const safeGetUser = async () => {
 
     return { success: true, user: data.user };
   } catch (error) {
-    // AuthSessionMissingError는 로그인하지 않은 상태에서는 정상
-    if (
-      error instanceof Error &&
-      error.message?.includes('Auth session missing')
-    ) {
+    if (isAuthSessionMissingError(error)) {
       return { success: true, user: null };
     }
     return { success: false, error };
   }
+};
+
+// 스토리지에서 Supabase 관련 키 제거 헬퍼 함수
+const clearStorageKeys = (storage: Storage, keysToRemove: string[]) => {
+  keysToRemove.forEach((key) => storage.removeItem(key));
+};
+
+const getSupabaseStorageKeys = (storage: Storage): string[] => {
+  const keys: string[] = [];
+  for (let i = 0; i < storage.length; i++) {
+    const key = storage.key(i);
+    if (
+      key &&
+      (key.includes('supabase') || key.includes('auth') || key.includes('sb-'))
+    ) {
+      keys.push(key);
+    }
+  }
+  return keys;
 };
 
 // 세션 완전 초기화
@@ -150,42 +169,13 @@ export const clearAllSessions = async () => {
     // Supabase 세션 종료
     await supabase.auth.signOut();
 
-    // localStorage 정리 (이전 세션 데이터 제거)
+    // localStorage 및 sessionStorage 정리 (이전 세션 데이터 제거)
     if (typeof window !== 'undefined') {
-      const keysToRemove = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (
-          key &&
-          (key.includes('supabase') ||
-            key.includes('auth') ||
-            key.includes('sb-'))
-        ) {
-          keysToRemove.push(key);
-        }
-      }
+      const localKeys = getSupabaseStorageKeys(localStorage);
+      clearStorageKeys(localStorage, localKeys);
 
-      keysToRemove.forEach((key) => {
-        localStorage.removeItem(key);
-      });
-
-      // 세션 스토리지도 정리
-      const sessionKeysToRemove = [];
-      for (let i = 0; i < sessionStorage.length; i++) {
-        const key = sessionStorage.key(i);
-        if (
-          key &&
-          (key.includes('supabase') ||
-            key.includes('auth') ||
-            key.includes('sb-'))
-        ) {
-          sessionKeysToRemove.push(key);
-        }
-      }
-
-      sessionKeysToRemove.forEach((key) => {
-        sessionStorage.removeItem(key);
-      });
+      const sessionKeys = getSupabaseStorageKeys(sessionStorage);
+      clearStorageKeys(sessionStorage, sessionKeys);
     }
 
     return { success: true };
@@ -205,8 +195,9 @@ export const testLoginFlow = async () => {
     // 2. 사용자 정보 확인
     const { data: userData, error: userError } = await supabase.auth.getUser();
 
-    // 3. 스토리지 확인
-    if (typeof window !== 'undefined') {
+    // 3. 스토리지 확인 (개발 환경에서만)
+    let storageInfo = null;
+    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
       const authKeys = Object.keys(localStorage).filter(
         (key) =>
           key.includes('supabase') ||
@@ -220,6 +211,8 @@ export const testLoginFlow = async () => {
           key.includes('auth') ||
           key.includes('sb-')
       );
+
+      storageInfo = { authKeys, sessionKeys };
     }
 
     // 4. OAuth 설정 확인
@@ -236,6 +229,8 @@ export const testLoginFlow = async () => {
     return {
       session: sessionData,
       user: userData,
+      storage: storageInfo,
+      oauth: oauthConfig,
       timestamp: new Date().toISOString(),
     };
   } catch (error) {

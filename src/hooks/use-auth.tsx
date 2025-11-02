@@ -68,11 +68,14 @@ export function useAuth() {
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (!isMounted) return;
 
-      console.log('[useAuth] 인증 상태 변경:', event, {
-        hasSession: !!session,
-        hasUser: !!session?.user,
-        hasInitiallyLoaded: hasInitiallyLoadedRef.current,
-      });
+      // 개발 환경에서만 상세 로그 출력
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[useAuth] 인증 상태 변경:', event, {
+          hasSession: !!session,
+          hasUser: !!session?.user,
+          hasInitiallyLoaded: hasInitiallyLoadedRef.current,
+        });
+      }
 
       // 초기 로드가 완료된 후에는 개발자 도구 열 때 발생하는 이벤트들을 완전히 무시
       // 이렇게 하면 개발자 도구를 열고 닫을 때 loading 상태가 변경되지 않습니다
@@ -84,12 +87,16 @@ export function useAuth() {
           event === 'INITIAL_SESSION' ||
           event === 'SIGNED_IN'
         ) {
-          console.log('[useAuth] 초기 로드 완료 후 무시할 이벤트:', event);
+          if (process.env.NODE_ENV === 'development') {
+            console.log('[useAuth] 초기 로드 완료 후 무시할 이벤트:', event);
+          }
           return;
         }
 
         // 초기 로드 완료 후에는 다른 이벤트도 loading 상태를 변경하지 않음
-        console.log('[useAuth] 초기 로드 완료 후 이벤트 무시:', event);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[useAuth] 초기 로드 완료 후 이벤트 무시:', event);
+        }
         return;
       }
 
@@ -100,7 +107,9 @@ export function useAuth() {
         event === 'USER_UPDATED' ||
         event === 'INITIAL_SESSION'
       ) {
-        console.log('[useAuth] 초기 로드 중 무시할 이벤트:', event);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[useAuth] 초기 로드 중 무시할 이벤트:', event);
+        }
         return;
       }
 
@@ -114,10 +123,12 @@ export function useAuth() {
           (prev.user !== null && user === null);
 
         if (userChanged) {
-          console.log('[useAuth] 사용자 상태 변경:', {
-            from: prev.user?.id || null,
-            to: user?.id || null,
-          });
+          if (process.env.NODE_ENV === 'development') {
+            console.log('[useAuth] 사용자 상태 변경:', {
+              from: prev.user?.id || null,
+              to: user?.id || null,
+            });
+          }
           return {
             user,
             loading: false,
