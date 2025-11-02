@@ -115,6 +115,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     };
 
     checkUserAndFetch();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

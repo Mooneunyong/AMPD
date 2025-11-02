@@ -82,6 +82,7 @@ export function CreateAccountForm({
         }));
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, currentUser?.id, availableUsers]);
 
   // 폼이 닫힐 때 상태 초기화
@@ -89,6 +90,7 @@ export function CreateAccountForm({
     if (!isOpen) {
       resetForm();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   const handleCreateAccount = async () => {

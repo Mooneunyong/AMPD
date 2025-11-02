@@ -128,11 +128,11 @@ export async function POST(request: NextRequest) {
         }
 
         // 2. JSON-LD 스키마에서 정보 추출 시도 (iTunes API에서 가져오지 못한 정보만)
-        const jsonLdMatches = html.match(/<script[^>]*type="application\/ld\+json"[^>]*>(.*?)<\/script>/gis);
+        const jsonLdMatches = html.match(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi);
         if (jsonLdMatches) {
           for (const jsonLdMatch of jsonLdMatches) {
             try {
-              const jsonContent = jsonLdMatch.match(/<script[^>]*>(.*?)<\/script>/is);
+              const jsonContent = jsonLdMatch.match(/<script[^>]*>([\s\S]*?)<\/script>/i);
               if (jsonContent && jsonContent[1]) {
                 const jsonLd = JSON.parse(jsonContent[1]);
                 if (jsonLd.name && !gameInfo.game_name) {

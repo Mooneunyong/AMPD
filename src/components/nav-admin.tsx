@@ -25,12 +25,7 @@ export const NavAdmin = memo(function NavAdmin({ items, pendingUrl, onItemClick 
   const pathname = usePathname();
   const { profile } = useUserContext();
 
-  // 관리자가 아니면 아무것도 렌더링하지 않음
-  if (!hasAdminAccess(profile?.role)) {
-    return null;
-  }
-
-  // 액티브 상태 확인 함수
+  // 액티브 상태 확인 함수 (Hook은 조건부 return 전에 호출되어야 함)
   const isActive = useCallback(
     (itemUrl: string) => {
       if (pendingUrl) return pendingUrl === itemUrl;
@@ -40,6 +35,11 @@ export const NavAdmin = memo(function NavAdmin({ items, pendingUrl, onItemClick 
     },
     [pathname, pendingUrl]
   );
+
+  // 관리자가 아니면 아무것도 렌더링하지 않음
+  if (!hasAdminAccess(profile?.role)) {
+    return null;
+  }
 
   // 클릭 핸들러
   return (

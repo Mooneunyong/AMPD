@@ -174,7 +174,7 @@ export default function AccountDetailPage() {
         <div className='text-center py-12'>
           <h2 className='text-2xl font-semibold mb-4'>Account Not Found</h2>
           <p className='text-muted-foreground mb-6'>
-            The account you're looking for doesn't exist or you don't have
+            The account you&apos;re looking for doesn&apos;t exist or you don&apos;t have
             access to it.
           </p>
           <Button onClick={() => window.history.back()}>
@@ -192,7 +192,7 @@ export default function AccountDetailPage() {
         <div className='text-center py-12'>
           <h2 className='text-2xl font-semibold mb-4'>Access Denied</h2>
           <p className='text-muted-foreground mb-6'>
-            You don't have permission to view this account.
+            You don&apos;t have permission to view this account.
           </p>
           <Button onClick={() => window.history.back()}>
             Back to Accounts
@@ -485,7 +485,7 @@ export default function AccountDetailPage() {
                 </div>
                 <h3 className='text-lg font-semibold mb-2'>No games found</h3>
                 <p className='text-muted-foreground mb-4'>
-                  This account doesn't have any games yet.
+                  This account doesn&apos;t have any games yet.
                 </p>
                 <Button onClick={() => setShowCreateGameForm(true)}>
                   <PlusIcon className='mr-1 h-4 w-4' />
@@ -547,7 +547,7 @@ export default function AccountDetailPage() {
                   No campaigns found
                 </h3>
                 <p className='text-muted-foreground mb-4'>
-                  This account doesn't have any campaigns yet.
+                  This account doesn&apos;t have any campaigns yet.
                 </p>
                 {accountGames.length === 0 ? (
                   <TooltipProvider delayDuration={0}>

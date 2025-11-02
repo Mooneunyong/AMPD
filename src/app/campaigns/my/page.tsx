@@ -648,7 +648,7 @@ export default function MyCampaignsPage() {
             </div>
             <h3 className='text-lg font-semibold mb-2'>No campaigns found</h3>
             <p className='text-muted-foreground'>
-              You haven't created any campaigns yet.
+              You haven&apos;t created any campaigns yet.
             </p>
           </div>
         )}

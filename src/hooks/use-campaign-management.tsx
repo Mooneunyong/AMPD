@@ -451,6 +451,7 @@ export function useCampaignManagement(accountId?: string) {
   // 계정 ID가 변경될 때마다 캠페인 로드
   useEffect(() => {
     loadCampaigns();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accountId]);
 
   return {

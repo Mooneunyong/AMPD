@@ -90,6 +90,7 @@ export function EditAccountForm({
     if (!isOpen) {
       resetForm();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   const handleUpdateAccount = async () => {
