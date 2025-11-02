@@ -114,6 +114,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         setProfile(profileData as UserProfile);
       }
       setLoading(false);
+      setIsInitialLoad(false);
     } catch (err) {
       console.error('사용자 프로필 조회 오류:', err);
       setError('프로필 정보를 가져오는 중 오류가 발생했습니다.');
@@ -166,6 +167,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           await fetchUserProfile();
         } else {
           setLoading(false);
+          setIsInitialLoad(false);
         }
       } catch (error) {
         console.error('초기 사용자 확인 오류:', error);
@@ -199,78 +201,98 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // TOKEN_REFRESHED나 USER_UPDATED 이벤트는 프로필만 간단히 업데이트
-      if ((event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') && session.user) {
-        // 프로필이 이미 있으면 그대로 유지 (재조회 불필요)
-        if (profile && profile.user_id === session.user.id) {
+      // TOKEN_REFRESHED나 USER_UPDATED 이벤트는 초기 로드가 완료된 후에는 무시
+      // (개발자 도구 열고 닫을 때 발생하는 불필요한 이벤트 방지)
+      if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        // 초기 로드가 완료되었고 프로필이 이미 있으면 무시
+        if (!isInitialLoad && profile && session?.user && profile.user_id === session.user.id) {
           return;
         }
         
-        // 프로필이 없거나 변경되었을 때만 조회
-        try {
-          const { data: profileData, error: profileError } = await supabase
-            .from('user_profiles')
-            .select('*')
-            .eq('user_id', session.user.id)
-            .single();
+        // 초기 로드 중이거나 프로필이 없을 때만 처리
+        // 하지만 초기 로드가 완료된 후에는 로딩 상태를 변경하지 않음
+        if (!profile && session?.user) {
+          try {
+            const { data: profileData, error: profileError } = await supabase
+              .from('user_profiles')
+              .select('*')
+              .eq('user_id', session.user.id)
+              .single();
 
-          if (!isMounted) return;
+            if (!isMounted) return;
 
-          if (profileError && profileError.code === 'PGRST116') {
-            // 프로필이 없으면 자동 생성 시도
-            try {
-              const displayName = 
-                session.user.user_metadata?.full_name ||
-                session.user.user_metadata?.name ||
-                session.user.email?.split('@')[0] ||
-                'User';
-              
-              const avatarUrl = 
-                session.user.user_metadata?.avatar_url ||
-                session.user.user_metadata?.picture ||
-                null;
-              
-              const { data: newProfileData, error: createError } = await supabase
-                .from('user_profiles')
-                .insert({
-                  user_id: session.user.id,
-                  email: session.user.email || '',
-                  display_name: displayName,
-                  avatar_url: avatarUrl,
-                  role: 'am',
-                  is_active: false,
-                })
-                .select()
-                .single();
-
-              if (!isMounted) return;
-
-              if (createError) {
-                console.error('프로필 자동 생성 오류:', createError);
-                await handleUserNotFound();
-                return;
+            if (profileData) {
+              setProfile(profileData as UserProfile);
+              // 초기 로드 중일 때만 로딩 상태 변경
+              if (isInitialLoad) {
+                setLoading(false);
+                setIsInitialLoad(false);
               }
+            } else if (profileError && profileError.code === 'PGRST116') {
+              // 프로필이 없으면 자동 생성 시도 (초기 로드 중일 때만)
+              if (isInitialLoad) {
+                try {
+                  const displayName = 
+                    session.user.user_metadata?.full_name ||
+                    session.user.user_metadata?.name ||
+                    session.user.email?.split('@')[0] ||
+                    'User';
+                  
+                  const avatarUrl = 
+                    session.user.user_metadata?.avatar_url ||
+                    session.user.user_metadata?.picture ||
+                    null;
+                  
+                  const { data: newProfileData, error: createError } = await supabase
+                    .from('user_profiles')
+                    .insert({
+                      user_id: session.user.id,
+                      email: session.user.email || '',
+                      display_name: displayName,
+                      avatar_url: avatarUrl,
+                      role: 'am',
+                      is_active: false,
+                    })
+                    .select()
+                    .single();
 
-              setProfile(newProfileData as UserProfile);
+                  if (!isMounted) return;
+
+                  if (createError) {
+                    console.error('프로필 자동 생성 오류:', createError);
+                    setLoading(false);
+                    setIsInitialLoad(false);
+                    await handleUserNotFound();
+                    return;
+                  }
+
+                  setProfile(newProfileData as UserProfile);
+                  setLoading(false);
+                  setIsInitialLoad(false);
+                } catch (createErr) {
+                  console.error('프로필 생성 중 예외 발생:', createErr);
+                  if (isMounted) {
+                    setLoading(false);
+                    setIsInitialLoad(false);
+                    await handleUserNotFound();
+                  }
+                }
+              }
+            } else if (isInitialLoad) {
+              // 다른 에러이지만 초기 로드 중이면 로딩 종료
               setLoading(false);
-            } catch (createErr) {
-              console.error('프로필 생성 중 예외 발생:', createErr);
-              if (isMounted) {
-                await handleUserNotFound();
-              }
+              setIsInitialLoad(false);
             }
-          } else if (profileData) {
-            setProfile(profileData as UserProfile);
-            setLoading(false);
-          } else {
-            setLoading(false);
-          }
-        } catch (err) {
-          console.error('프로필 조회 오류:', err);
-          if (isMounted) {
-            setLoading(false);
+          } catch (err) {
+            console.error('프로필 조회 오류:', err);
+            // 초기 로드 중일 때만 로딩 상태 변경
+            if (isInitialLoad && isMounted) {
+              setLoading(false);
+              setIsInitialLoad(false);
+            }
           }
         }
+        return;
       }
     });
 
