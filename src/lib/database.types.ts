@@ -60,69 +60,57 @@ export type Database = {
       }
       campaigns: {
         Row: {
-          app_id: string
-          app_store_url: string
-          budget: number | null
-          campaign_name: string
-          company: string
-          country: string
+          account_id: string
+          campaign_type: string
           created_at: string | null
           created_by: string | null
+          daily_report_url: string | null
+          description: string | null
           end_date: string
           game_id: string | null
           id: string
+          jira_url: string | null
           mmp: string
-          mmp_campaign_name: string
-          notes: string | null
+          name: string
+          region: string
           start_date: string
           status: string
-          target_cpi: number | null
-          target_installs: number | null
-          type: string
           updated_at: string | null
         }
         Insert: {
-          app_id?: string
-          app_store_url?: string
-          budget?: number | null
-          campaign_name: string
-          company: string
-          country: string
+          account_id: string
+          campaign_type: string
           created_at?: string | null
           created_by?: string | null
+          daily_report_url?: string | null
+          description?: string | null
           end_date: string
           game_id?: string | null
           id?: string
+          jira_url?: string | null
           mmp: string
-          mmp_campaign_name: string
-          notes?: string | null
+          name: string
+          region: string
           start_date: string
           status: string
-          target_cpi?: number | null
-          target_installs?: number | null
-          type: string
           updated_at?: string | null
         }
         Update: {
-          app_id?: string
-          app_store_url?: string
-          budget?: number | null
-          campaign_name?: string
-          company?: string
-          country?: string
+          account_id?: string
+          campaign_type?: string
           created_at?: string | null
           created_by?: string | null
+          daily_report_url?: string | null
+          description?: string | null
           end_date?: string
           game_id?: string | null
           id?: string
+          jira_url?: string | null
           mmp?: string
-          mmp_campaign_name?: string
-          notes?: string | null
+          name?: string
+          region?: string
           start_date?: string
           status?: string
-          target_cpi?: number | null
-          target_installs?: number | null
-          type?: string
           updated_at?: string | null
         }
         Relationships: [

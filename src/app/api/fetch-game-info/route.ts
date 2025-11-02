@@ -151,19 +151,19 @@ export async function POST(request: NextRequest) {
         // 게임명 추출 - 여러 패턴 시도 (JSON-LD에서 가져오지 못한 경우)
         if (!gameInfo.game_name) {
           let nameMatch = html.match(
-            /<h1[^>]*class="[^"]*product-header__title[^"]*"[^>]*>(.*?)<\/h1>/is
+            /<h1[^>]*class="[^"]*product-header__title[^"]*"[^>]*>([\s\S]*?)<\/h1>/i
           );
           if (!nameMatch) {
-            nameMatch = html.match(/<h1[^>]*data-test="product-title"[^>]*>(.*?)<\/h1>/is);
+            nameMatch = html.match(/<h1[^>]*data-test="product-title"[^>]*>([\s\S]*?)<\/h1>/i);
           }
           if (!nameMatch) {
-            nameMatch = html.match(/<h1[^>]*class="[^"]*product-header__title[^"]*"[^>]*>.*?<span[^>]*>(.*?)<\/span>/is);
+            nameMatch = html.match(/<h1[^>]*class="[^"]*product-header__title[^"]*"[^>]*>[\s\S]*?<span[^>]*>([\s\S]*?)<\/span>/i);
           }
           if (!nameMatch) {
-            nameMatch = html.match(/<meta[^>]*property="og:title"[^>]*content="([^"]+)"/is);
+            nameMatch = html.match(/<meta[^>]*property="og:title"[^>]*content="([^"]+)"/i);
           }
           if (!nameMatch) {
-            nameMatch = html.match(/<title[^>]*>(.*?)<\/title>/is);
+            nameMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
           }
           if (nameMatch) {
             // HTML 태그 제거
@@ -195,7 +195,7 @@ export async function POST(request: NextRequest) {
 
           // 2. HTML 내의 스크립트 태그에서 Bundle ID 찾기
           if (!gameInfo.package_identifier) {
-            const scriptMatches = html.match(/<script[^>]*>(.*?)<\/script>/gis);
+            const scriptMatches = html.match(/<script[^>]*>([\s\S]*?)<\/script>/gi);
             if (scriptMatches) {
               for (const scriptContent of scriptMatches) {
                 let bundleIdMatch = scriptContent.match(/bundleId["\s:=]+"([^"]+)"/i);
@@ -225,25 +225,26 @@ export async function POST(request: NextRequest) {
         // 로고 이미지 추출 - 여러 패턴 시도
         if (!gameInfo.logo_url) {
           // og:image 메타 태그에서 추출
-          let logoMatch = html.match(/<meta[^>]*property="og:image"[^>]*content="([^"]+)"/is);
+          let logoMatch = html.match(/<meta[^>]*property="og:image"[^>]*content="([^"]+)"/i);
           if (!logoMatch) {
-            logoMatch = html.match(/<meta[^>]*name="og:image"[^>]*content="([^"]+)"/is);
+            logoMatch = html.match(/<meta[^>]*name="og:image"[^>]*content="([^"]+)"/i);
           }
           if (!logoMatch) {
             // product-header__artwork 이미지 추출 시도
-            logoMatch = html.match(/<picture[^>]*class="[^"]*product-header__artwork[^"]*"[^>]*>.*?<img[^>]*src="([^"]+)"/is);
+            logoMatch = html.match(/<picture[^>]*class="[^"]*product-header__artwork[^"]*"[^>]*>[\s\S]*?<img[^>]*src="([^"]+)"/i);
           }
           if (!logoMatch) {
             // 일반적인 앱 아이콘 이미지 추출
-            logoMatch = html.match(/<img[^>]*class="[^"]*product-header__icon[^"]*"[^>]*src="([^"]+)"/is);
+            logoMatch = html.match(/<img[^>]*class="[^"]*product-header__icon[^"]*"[^>]*src="([^"]+)"/i);
           }
           if (!logoMatch) {
             // srcset에서 추출 시도
-            logoMatch = html.match(/<img[^>]*srcset="([^"]+)"[^>]*>/is);
-            if (logoMatch) {
+            const srcsetMatch = html.match(/<img[^>]*srcset="([^"]+)"[^>]*>/i);
+            if (srcsetMatch && srcsetMatch[1]) {
               // srcset에서 첫 번째 URL 추출
-              const srcsetUrl = logoMatch[1].split(',')[0].trim().split(' ')[0];
-              logoMatch = [null, srcsetUrl];
+              const srcsetUrl = srcsetMatch[1].split(',')[0].trim().split(' ')[0];
+              logoMatch = srcsetMatch;
+              logoMatch[1] = srcsetUrl;
             }
           }
           if (logoMatch && logoMatch[1]) {
@@ -283,7 +284,7 @@ export async function POST(request: NextRequest) {
         const html = await response.text();
 
         // JSON-LD 스키마에서 정보 추출 시도
-        const jsonLdMatch = html.match(/<script[^>]*type="application\/ld\+json"[^>]*>(.*?)<\/script>/is);
+        const jsonLdMatch = html.match(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/i);
         if (jsonLdMatch) {
           try {
             const jsonLd = JSON.parse(jsonLdMatch[1]);
@@ -301,19 +302,19 @@ export async function POST(request: NextRequest) {
         // 게임명 추출 - 여러 패턴 시도 (JSON-LD에서 가져오지 못한 경우)
         if (!gameInfo.game_name) {
           let nameMatch = html.match(
-            /<h1[^>]*itemprop="name"[^>]*>(.*?)<\/h1>/is
+            /<h1[^>]*itemprop="name"[^>]*>([\s\S]*?)<\/h1>/i
           );
           if (!nameMatch) {
-            nameMatch = html.match(/<h1[^>]*class="[^"]*Fd93Bb[^"]*"[^>]*>(.*?)<\/h1>/is);
+            nameMatch = html.match(/<h1[^>]*class="[^"]*Fd93Bb[^"]*"[^>]*>([\s\S]*?)<\/h1>/i);
           }
           if (!nameMatch) {
-            nameMatch = html.match(/<meta[^>]*property="og:title"[^>]*content="([^"]+)"/is);
+            nameMatch = html.match(/<meta[^>]*property="og:title"[^>]*content="([^"]+)"/i);
           }
           if (!nameMatch) {
-            nameMatch = html.match(/<meta[^>]*name="title"[^>]*content="([^"]+)"/is);
+            nameMatch = html.match(/<meta[^>]*name="title"[^>]*content="([^"]+)"/i);
           }
           if (!nameMatch) {
-            nameMatch = html.match(/<title[^>]*>(.*?)<\/title>/is);
+            nameMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
           }
           if (nameMatch) {
             // HTML 태그 제거
@@ -346,25 +347,26 @@ export async function POST(request: NextRequest) {
         // 로고 이미지 추출 - 여러 패턴 시도
         if (!gameInfo.logo_url) {
           // og:image 메타 태그에서 추출
-          let logoMatch = html.match(/<meta[^>]*property="og:image"[^>]*content="([^"]+)"/is);
+          let logoMatch = html.match(/<meta[^>]*property="og:image"[^>]*content="([^"]+)"/i);
           if (!logoMatch) {
-            logoMatch = html.match(/<meta[^>]*name="og:image"[^>]*content="([^"]+)"/is);
+            logoMatch = html.match(/<meta[^>]*name="og:image"[^>]*content="([^"]+)"/i);
           }
           if (!logoMatch) {
             // Google Play 앱 아이콘 이미지 추출
-            logoMatch = html.match(/<img[^>]*alt="[^"]*icon[^"]*"[^>]*src="([^"]+)"/is);
+            logoMatch = html.match(/<img[^>]*alt="[^"]*icon[^"]*"[^>]*src="([^"]+)"/i);
           }
           if (!logoMatch) {
             // 일반적인 앱 아이콘 클래스 추출
-            logoMatch = html.match(/<img[^>]*class="[^"]*T75of[^"]*"[^>]*src="([^"]+)"/is);
+            logoMatch = html.match(/<img[^>]*class="[^"]*T75of[^"]*"[^>]*src="([^"]+)"/i);
           }
           if (!logoMatch) {
             // srcset에서 추출 시도
-            logoMatch = html.match(/<img[^>]*srcset="([^"]+)"[^>]*>/is);
-            if (logoMatch) {
+            const srcsetMatch = html.match(/<img[^>]*srcset="([^"]+)"[^>]*>/i);
+            if (srcsetMatch && srcsetMatch[1]) {
               // srcset에서 첫 번째 URL 추출
-              const srcsetUrl = logoMatch[1].split(',')[0].trim().split(' ')[0];
-              logoMatch = [null, srcsetUrl];
+              const srcsetUrl = srcsetMatch[1].split(',')[0].trim().split(' ')[0];
+              logoMatch = srcsetMatch;
+              logoMatch[1] = srcsetUrl;
             }
           }
           if (logoMatch && logoMatch[1]) {

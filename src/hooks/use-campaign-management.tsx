@@ -303,9 +303,9 @@ export async function createCampaign(
 
   return {
     ...data,
-    game_name: data.games?.game_name || null,
-    game_store_url: data.games?.store_url || null,
-    account_company: data.games?.accounts?.company || null,
+    game_name: (data.games as any)?.game_name || null,
+    game_store_url: (data.games as any)?.store_url || null,
+    account_company: (data.games as any)?.accounts?.company || null,
   };
 }
 
@@ -348,15 +348,15 @@ export async function updateCampaign(
 
   return {
     ...data,
-    game_name: data.games?.game_name || null,
-    game_store_url: data.games?.store_url || null,
-    game_package_identifier: data.games?.package_identifier || null,
-    account_company: data.games?.accounts?.company || null,
-    assigned_user_id: data.games?.accounts?.assigned_user_id || null,
+    game_name: (data.games as any)?.game_name || null,
+    game_store_url: (data.games as any)?.store_url || null,
+    game_package_identifier: (data.games as any)?.package_identifier || null,
+    account_company: (data.games as any)?.accounts?.company || null,
+    assigned_user_id: (data.games as any)?.accounts?.assigned_user_id || null,
     assigned_user_name:
-      data.games?.accounts?.user_profiles?.display_name || null,
+      (data.games as any)?.accounts?.user_profiles?.display_name || null,
     assigned_user_avatar_url:
-      data.games?.accounts?.user_profiles?.avatar_url || null,
+      (data.games as any)?.accounts?.user_profiles?.avatar_url || null,
   };
 }
 

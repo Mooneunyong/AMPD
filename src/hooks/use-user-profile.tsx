@@ -49,7 +49,7 @@ export function useUserProfile(): UseUserProfileReturn {
           return;
         }
 
-        setProfile(profileData);
+        setProfile(profileData as UserProfile);
       } catch (err) {
         console.error('사용자 프로필 조회 오류:', err);
         setError('프로필 정보를 가져오는 중 오류가 발생했습니다.');

@@ -3,7 +3,7 @@
  */
 
 import { ReactNode } from 'react';
-import { SupabaseUser } from '@supabase/supabase-js';
+import { User as SupabaseUser } from '@supabase/supabase-js';
 
 export interface AppSidebarProps {
   user?: SupabaseUser | null;
