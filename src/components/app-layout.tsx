@@ -33,8 +33,18 @@ export function AppLayout({ children }: AppLayoutProps) {
   } = useUserContext();
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [loginError, setLoginError] = useState<ParsedError | null>(null);
+  const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
 
-  const globalLoading = authLoading || profileLoading;
+  // 초기 로드 완료 추적
+  useEffect(() => {
+    if (!authLoading && !profileLoading && (user || !user)) {
+      // 사용자가 있거나 없거나 관계없이 초기 로드가 완료되면
+      setHasInitiallyLoaded(true);
+    }
+  }, [authLoading, profileLoading, user]);
+
+  // 초기 로드가 완료된 후에는 TOKEN_REFRESHED로 인한 로딩 상태 변경 무시
+  const globalLoading = hasInitiallyLoaded ? false : (authLoading || profileLoading);
 
   // 세션 스토리지에서 에러 정보 확인
   useEffect(() => {

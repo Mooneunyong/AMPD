@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { supabase, clearAllSessions } from '@/lib/supabase';
 import { UserProfile } from '@/lib/permissions';
 
@@ -19,10 +19,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const isInitialLoadRef = useRef(true);
 
-  const fetchUserProfile = async () => {
+  const fetchUserProfile = async (skipLoading = false) => {
     try {
-      setLoading(true);
+      if (!skipLoading) {
+        setLoading(true);
+      }
       setError(null);
 
       // 현재 사용자 정보 가져오기
@@ -116,10 +119,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       }
       setLoading(false);
       setIsInitialLoad(false);
+      isInitialLoadRef.current = false;
     } catch (err) {
       console.error('사용자 프로필 조회 오류:', err);
       setError('프로필 정보를 가져오는 중 오류가 발생했습니다.');
       setLoading(false);
+      setIsInitialLoad(false);
+      isInitialLoadRef.current = false;
     }
   };
 
@@ -169,11 +175,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         } else {
           setLoading(false);
           setIsInitialLoad(false);
+          isInitialLoadRef.current = false;
         }
       } catch (error) {
         console.error('초기 사용자 확인 오류:', error);
         if (isMounted) {
           setLoading(false);
+          setIsInitialLoad(false);
         }
       }
     };
@@ -186,113 +194,36 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMounted) return;
 
-      console.log('Auth state changed:', event, session?.user?.id);
-
       // 세션이 없거나 사용자가 없으면 로그아웃 처리
       if (event === 'SIGNED_OUT' || !session?.user) {
         console.log('세션 만료 또는 사용자 삭제 감지 - 강제 로그아웃');
         setProfile(null);
         setLoading(false);
+        setIsInitialLoad(false);
         return;
       }
 
-      // SIGNED_IN 이벤트만 fetchUserProfile 호출 (중복 방지)
+      // SIGNED_IN 이벤트만 fetchUserProfile 호출
       if (event === 'SIGNED_IN') {
-        await fetchUserProfile();
+        // 초기 로드가 완료되지 않은 경우에만 fetchUserProfile 호출
+        if (isInitialLoadRef.current) {
+          await fetchUserProfile();
+        }
         return;
       }
 
-      // TOKEN_REFRESHED나 USER_UPDATED 이벤트는 초기 로드가 완료된 후에는 무시
+      // TOKEN_REFRESHED나 USER_UPDATED 이벤트는 초기 로드가 완료된 후에는 완전히 무시
       // (개발자 도구 열고 닫을 때 발생하는 불필요한 이벤트 방지)
       if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
-        // 초기 로드가 완료되었고 프로필이 이미 있으면 무시
-        if (!isInitialLoad && profile && session?.user && profile.user_id === session.user.id) {
+        // 초기 로드가 완료된 후에는 완전히 무시 (아무것도 하지 않음)
+        if (!isInitialLoadRef.current) {
           return;
         }
-        
-        // 초기 로드 중이거나 프로필이 없을 때만 처리
-        // 하지만 초기 로드가 완료된 후에는 로딩 상태를 변경하지 않음
-        if (!profile && session?.user) {
-          try {
-            const { data: profileData, error: profileError } = await supabase
-              .from('user_profiles')
-              .select('*')
-              .eq('user_id', session.user.id)
-              .single();
-
-            if (!isMounted) return;
-
-            if (profileData) {
-              setProfile(profileData as UserProfile);
-              // 초기 로드 중일 때만 로딩 상태 변경
-              if (isInitialLoad) {
-                setLoading(false);
-                setIsInitialLoad(false);
-              }
-            } else if (profileError && profileError.code === 'PGRST116') {
-              // 프로필이 없으면 자동 생성 시도 (초기 로드 중일 때만)
-              if (isInitialLoad) {
-                try {
-                  const displayName = 
-                    session.user.user_metadata?.full_name ||
-                    session.user.user_metadata?.name ||
-                    session.user.email?.split('@')[0] ||
-                    'User';
-                  
-                  const avatarUrl = 
-                    session.user.user_metadata?.avatar_url ||
-                    session.user.user_metadata?.picture ||
-                    null;
-                  
-                  const { data: newProfileData, error: createError } = await supabase
-                    .from('user_profiles')
-                    .insert({
-                      user_id: session.user.id,
-                      email: session.user.email || '',
-                      display_name: displayName,
-                      avatar_url: avatarUrl,
-                      role: 'am',
-                      is_active: false,
-                    })
-                    .select()
-                    .single();
-
-                  if (!isMounted) return;
-
-                  if (createError) {
-                    console.error('프로필 자동 생성 오류:', createError);
-                    setLoading(false);
-                    setIsInitialLoad(false);
-                    await handleUserNotFound();
-                    return;
-                  }
-
-                  setProfile(newProfileData as UserProfile);
-                  setLoading(false);
-                  setIsInitialLoad(false);
-                } catch (createErr) {
-                  console.error('프로필 생성 중 예외 발생:', createErr);
-                  if (isMounted) {
-                    setLoading(false);
-                    setIsInitialLoad(false);
-                    await handleUserNotFound();
-                  }
-                }
-              }
-            } else if (isInitialLoad) {
-              // 다른 에러이지만 초기 로드 중이면 로딩 종료
-              setLoading(false);
-              setIsInitialLoad(false);
-            }
-          } catch (err) {
-            console.error('프로필 조회 오류:', err);
-            // 초기 로드 중일 때만 로딩 상태 변경
-            if (isInitialLoad && isMounted) {
-              setLoading(false);
-              setIsInitialLoad(false);
-            }
-          }
+        // 초기 로드 중에도 프로필이 이미 있으면 무시
+        if (profile) {
+          return;
         }
+        // 초기 로드 중이고 프로필이 없을 때만 처리 (거의 발생하지 않음)
         return;
       }
     });
