@@ -1,6 +1,12 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useRef,
+} from 'react';
 import { supabase, clearAllSessions } from '@/lib/supabase';
 import { UserProfile } from '@/lib/permissions';
 
@@ -59,20 +65,20 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           // 사용자가 이미 auth.users에 있는 경우에만 프로필 자동 생성
           // (첫 로그인 시)
           console.log('사용자 프로필이 존재하지 않음 - 자동 생성 시도');
-          
+
           try {
-            const displayName = 
+            const displayName =
               user.user_metadata?.full_name ||
               user.user_metadata?.name ||
               user.email?.split('@')[0] ||
               'User';
-            
+
             // Google OAuth는 picture 필드에 아바타 URL을 제공합니다
-            const avatarUrl = 
+            const avatarUrl =
               user.user_metadata?.avatar_url ||
               user.user_metadata?.picture ||
               null;
-            
+
             const { data: newProfileData, error: createError } = await supabase
               .from('user_profiles')
               .insert({
@@ -167,7 +173,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         const {
           data: { user },
         } = await supabase.auth.getUser();
-        
+
         if (!isMounted) return;
 
         if (user) {
