@@ -53,9 +53,45 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           profileError.code === 'PGRST116' ||
           profileError.message?.includes('No rows found')
         ) {
-          console.log('사용자 프로필이 존재하지 않음 - 강제 로그아웃');
-          await handleUserNotFound();
-          return;
+          console.log('사용자 프로필이 존재하지 않음 - 자동 생성 시도');
+          
+          // 프로필 자동 생성 시도
+          try {
+            const displayName = 
+              user.user_metadata?.full_name ||
+              user.user_metadata?.name ||
+              user.email?.split('@')[0] ||
+              'User';
+            
+            const { data: newProfileData, error: createError } = await supabase
+              .from('user_profiles')
+              .insert({
+                user_id: user.id,
+                email: user.email || '',
+                display_name: displayName,
+                avatar_url: user.user_metadata?.avatar_url || null,
+                role: 'am',
+                is_active: false, // 첫 로그인 시 비활성 상태
+              })
+              .select()
+              .single();
+
+            if (createError) {
+              console.error('프로필 생성 오류:', createError);
+              // 프로필 생성 실패 시 강제 로그아웃
+              await handleUserNotFound();
+              return;
+            }
+
+            console.log('프로필 자동 생성 성공:', newProfileData);
+            setProfile(newProfileData as UserProfile);
+            return;
+          } catch (createErr) {
+            console.error('프로필 생성 중 예외 발생:', createErr);
+            // 프로필 생성 실패 시 강제 로그아웃
+            await handleUserNotFound();
+            return;
+          }
         }
 
         setError('프로필 정보를 가져올 수 없습니다.');
