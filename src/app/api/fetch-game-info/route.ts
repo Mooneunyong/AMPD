@@ -11,10 +11,7 @@ export async function POST(request: NextRequest) {
     const { url } = await request.json();
 
     if (!url || typeof url !== 'string') {
-      return NextResponse.json(
-        { error: 'URL is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'URL is required' }, { status: 400 });
     }
 
     const gameInfo: GameInfo = {};
@@ -27,27 +24,28 @@ export async function POST(request: NextRequest) {
           headers: {
             'User-Agent':
               'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            Accept:
+              'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.9',
           },
         });
-        
+
         if (!response.ok) {
           throw new Error(`Failed to fetch: ${response.status}`);
         }
-        
+
         const html = await response.text();
 
         // 1. iTunes API를 먼저 시도 (App ID가 있는 경우) - 가장 안정적
         // App Store URL에서 App ID 추출 - 여러 패턴 시도
         let appId: string | null = null;
-        
+
         // 패턴 1: /id123456 형식
         const match1 = url.match(/\/id(\d+)/);
         if (match1 && match1[1]) {
           appId = match1[1];
         }
-        
+
         // 패턴 2: ?id=123456 형식
         if (!appId) {
           const match2 = url.match(/[?&]id=(\d+)/);
@@ -55,7 +53,7 @@ export async function POST(request: NextRequest) {
             appId = match2[1];
           }
         }
-        
+
         // 패턴 3: /app/id123456 형식
         if (!appId) {
           const match3 = url.match(/\/app\/id(\d+)/);
@@ -63,29 +61,29 @@ export async function POST(request: NextRequest) {
             appId = match3[1];
           }
         }
-        
+
         if (appId) {
           try {
             // iTunes Lookup API를 사용하여 앱 정보 가져오기
             const itunesUrl = `https://itunes.apple.com/lookup?id=${appId}`;
             const itunesResponse = await fetch(itunesUrl);
-            
+
             if (itunesResponse.ok) {
               const itunesData = await itunesResponse.json();
-              
+
               if (itunesData.results && itunesData.results.length > 0) {
                 const appData = itunesData.results[0];
-                
+
                 // 게임명 가져오기
                 if (appData.trackName && !gameInfo.game_name) {
                   gameInfo.game_name = appData.trackName;
                 }
-                
+
                 // Bundle ID 가져오기
                 if (appData.bundleId && !gameInfo.package_identifier) {
                   gameInfo.package_identifier = appData.bundleId;
                 }
-                
+
                 // 로고 URL 가져오기
                 if (!gameInfo.logo_url) {
                   if (appData.artworkUrl512) {
@@ -105,18 +103,24 @@ export async function POST(request: NextRequest) {
         }
 
         // 2. JSON-LD 스키마에서 정보 추출 시도 (iTunes API에서 가져오지 못한 정보만)
-        const jsonLdMatches = html.match(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi);
+        const jsonLdMatches = html.match(
+          /<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi
+        );
         if (jsonLdMatches) {
           for (const jsonLdMatch of jsonLdMatches) {
             try {
-              const jsonContent = jsonLdMatch.match(/<script[^>]*>([\s\S]*?)<\/script>/i);
+              const jsonContent = jsonLdMatch.match(
+                /<script[^>]*>([\s\S]*?)<\/script>/i
+              );
               if (jsonContent && jsonContent[1]) {
                 const jsonLd = JSON.parse(jsonContent[1]);
                 if (jsonLd.name && !gameInfo.game_name) {
                   gameInfo.game_name = jsonLd.name;
                 }
                 if (jsonLd.image && !gameInfo.logo_url) {
-                  gameInfo.logo_url = Array.isArray(jsonLd.image) ? jsonLd.image[0] : jsonLd.image;
+                  gameInfo.logo_url = Array.isArray(jsonLd.image)
+                    ? jsonLd.image[0]
+                    : jsonLd.image;
                 }
               }
             } catch (e) {
@@ -131,13 +135,19 @@ export async function POST(request: NextRequest) {
             /<h1[^>]*class="[^"]*product-header__title[^"]*"[^>]*>([\s\S]*?)<\/h1>/i
           );
           if (!nameMatch) {
-            nameMatch = html.match(/<h1[^>]*data-test="product-title"[^>]*>([\s\S]*?)<\/h1>/i);
+            nameMatch = html.match(
+              /<h1[^>]*data-test="product-title"[^>]*>([\s\S]*?)<\/h1>/i
+            );
           }
           if (!nameMatch) {
-            nameMatch = html.match(/<h1[^>]*class="[^"]*product-header__title[^"]*"[^>]*>[\s\S]*?<span[^>]*>([\s\S]*?)<\/span>/i);
+            nameMatch = html.match(
+              /<h1[^>]*class="[^"]*product-header__title[^"]*"[^>]*>[\s\S]*?<span[^>]*>([\s\S]*?)<\/span>/i
+            );
           }
           if (!nameMatch) {
-            nameMatch = html.match(/<meta[^>]*property="og:title"[^>]*content="([^"]+)"/i);
+            nameMatch = html.match(
+              /<meta[^>]*property="og:title"[^>]*content="([^"]+)"/i
+            );
           }
           if (!nameMatch) {
             nameMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
@@ -155,7 +165,9 @@ export async function POST(request: NextRequest) {
               .replace(/&apos;/g, "'")
               .trim();
             // " - App Store" 같은 접미사 제거
-            gameName = gameName.replace(/\s*[-–—]\s*App\s*Store.*$/i, '').trim();
+            gameName = gameName
+              .replace(/\s*[-–—]\s*App\s*Store.*$/i, '')
+              .trim();
             if (gameName) {
               gameInfo.game_name = gameName;
             }
@@ -172,15 +184,23 @@ export async function POST(request: NextRequest) {
 
           // 2. HTML 내의 스크립트 태그에서 Bundle ID 찾기
           if (!gameInfo.package_identifier) {
-            const scriptMatches = html.match(/<script[^>]*>([\s\S]*?)<\/script>/gi);
+            const scriptMatches = html.match(
+              /<script[^>]*>([\s\S]*?)<\/script>/gi
+            );
             if (scriptMatches) {
               for (const scriptContent of scriptMatches) {
-                let bundleIdMatch = scriptContent.match(/bundleId["\s:=]+"([^"]+)"/i);
+                let bundleIdMatch = scriptContent.match(
+                  /bundleId["\s:=]+"([^"]+)"/i
+                );
                 if (!bundleIdMatch) {
-                  bundleIdMatch = scriptContent.match(/bundle-id["\s:=]+"([^"]+)"/i);
+                  bundleIdMatch = scriptContent.match(
+                    /bundle-id["\s:=]+"([^"]+)"/i
+                  );
                 }
                 if (!bundleIdMatch) {
-                  bundleIdMatch = scriptContent.match(/bundleIdentifier["\s:=]+"([^"]+)"/i);
+                  bundleIdMatch = scriptContent.match(
+                    /bundleIdentifier["\s:=]+"([^"]+)"/i
+                  );
                 }
                 if (bundleIdMatch && bundleIdMatch[1]) {
                   gameInfo.package_identifier = bundleIdMatch[1];
@@ -202,24 +222,35 @@ export async function POST(request: NextRequest) {
         // 로고 이미지 추출 - 여러 패턴 시도
         if (!gameInfo.logo_url) {
           // og:image 메타 태그에서 추출
-          let logoMatch = html.match(/<meta[^>]*property="og:image"[^>]*content="([^"]+)"/i);
+          let logoMatch = html.match(
+            /<meta[^>]*property="og:image"[^>]*content="([^"]+)"/i
+          );
           if (!logoMatch) {
-            logoMatch = html.match(/<meta[^>]*name="og:image"[^>]*content="([^"]+)"/i);
+            logoMatch = html.match(
+              /<meta[^>]*name="og:image"[^>]*content="([^"]+)"/i
+            );
           }
           if (!logoMatch) {
             // product-header__artwork 이미지 추출 시도
-            logoMatch = html.match(/<picture[^>]*class="[^"]*product-header__artwork[^"]*"[^>]*>[\s\S]*?<img[^>]*src="([^"]+)"/i);
+            logoMatch = html.match(
+              /<picture[^>]*class="[^"]*product-header__artwork[^"]*"[^>]*>[\s\S]*?<img[^>]*src="([^"]+)"/i
+            );
           }
           if (!logoMatch) {
             // 일반적인 앱 아이콘 이미지 추출
-            logoMatch = html.match(/<img[^>]*class="[^"]*product-header__icon[^"]*"[^>]*src="([^"]+)"/i);
+            logoMatch = html.match(
+              /<img[^>]*class="[^"]*product-header__icon[^"]*"[^>]*src="([^"]+)"/i
+            );
           }
           if (!logoMatch) {
             // srcset에서 추출 시도
             const srcsetMatch = html.match(/<img[^>]*srcset="([^"]+)"[^>]*>/i);
             if (srcsetMatch && srcsetMatch[1]) {
               // srcset에서 첫 번째 URL 추출
-              const srcsetUrl = srcsetMatch[1].split(',')[0].trim().split(' ')[0];
+              const srcsetUrl = srcsetMatch[1]
+                .split(',')[0]
+                .trim()
+                .split(' ')[0];
               logoMatch = srcsetMatch;
               logoMatch[1] = srcsetUrl;
             }
@@ -236,7 +267,6 @@ export async function POST(request: NextRequest) {
             gameInfo.logo_url = logoUrl;
           }
         }
-        
       } catch (error) {
         console.error('App Store 스크래핑 오류:', error);
       }
@@ -248,19 +278,22 @@ export async function POST(request: NextRequest) {
           headers: {
             'User-Agent':
               'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            Accept:
+              'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Language': 'en-US,en;q=0.9',
           },
         });
-        
+
         if (!response.ok) {
           throw new Error(`Failed to fetch: ${response.status}`);
         }
-        
+
         const html = await response.text();
 
         // JSON-LD 스키마에서 정보 추출 시도
-        const jsonLdMatch = html.match(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/i);
+        const jsonLdMatch = html.match(
+          /<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/i
+        );
         if (jsonLdMatch) {
           try {
             const jsonLd = JSON.parse(jsonLdMatch[1]);
@@ -268,7 +301,9 @@ export async function POST(request: NextRequest) {
               gameInfo.game_name = jsonLd.name;
             }
             if (jsonLd.image) {
-              gameInfo.logo_url = Array.isArray(jsonLd.image) ? jsonLd.image[0] : jsonLd.image;
+              gameInfo.logo_url = Array.isArray(jsonLd.image)
+                ? jsonLd.image[0]
+                : jsonLd.image;
             }
           } catch (e) {
             // JSON 파싱 실패 시 계속 진행
@@ -281,13 +316,19 @@ export async function POST(request: NextRequest) {
             /<h1[^>]*itemprop="name"[^>]*>([\s\S]*?)<\/h1>/i
           );
           if (!nameMatch) {
-            nameMatch = html.match(/<h1[^>]*class="[^"]*Fd93Bb[^"]*"[^>]*>([\s\S]*?)<\/h1>/i);
+            nameMatch = html.match(
+              /<h1[^>]*class="[^"]*Fd93Bb[^"]*"[^>]*>([\s\S]*?)<\/h1>/i
+            );
           }
           if (!nameMatch) {
-            nameMatch = html.match(/<meta[^>]*property="og:title"[^>]*content="([^"]+)"/i);
+            nameMatch = html.match(
+              /<meta[^>]*property="og:title"[^>]*content="([^"]+)"/i
+            );
           }
           if (!nameMatch) {
-            nameMatch = html.match(/<meta[^>]*name="title"[^>]*content="([^"]+)"/i);
+            nameMatch = html.match(
+              /<meta[^>]*name="title"[^>]*content="([^"]+)"/i
+            );
           }
           if (!nameMatch) {
             nameMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
@@ -305,7 +346,9 @@ export async function POST(request: NextRequest) {
               .replace(/&apos;/g, "'")
               .trim();
             // " - Google Play" 같은 접미사 제거
-            gameName = gameName.replace(/\s*[-–—]\s*Google\s*Play.*$/i, '').trim();
+            gameName = gameName
+              .replace(/\s*[-–—]\s*Google\s*Play.*$/i, '')
+              .trim();
             if (gameName) {
               gameInfo.game_name = gameName;
             }
@@ -323,24 +366,35 @@ export async function POST(request: NextRequest) {
         // 로고 이미지 추출 - 여러 패턴 시도
         if (!gameInfo.logo_url) {
           // og:image 메타 태그에서 추출
-          let logoMatch = html.match(/<meta[^>]*property="og:image"[^>]*content="([^"]+)"/i);
+          let logoMatch = html.match(
+            /<meta[^>]*property="og:image"[^>]*content="([^"]+)"/i
+          );
           if (!logoMatch) {
-            logoMatch = html.match(/<meta[^>]*name="og:image"[^>]*content="([^"]+)"/i);
+            logoMatch = html.match(
+              /<meta[^>]*name="og:image"[^>]*content="([^"]+)"/i
+            );
           }
           if (!logoMatch) {
             // Google Play 앱 아이콘 이미지 추출
-            logoMatch = html.match(/<img[^>]*alt="[^"]*icon[^"]*"[^>]*src="([^"]+)"/i);
+            logoMatch = html.match(
+              /<img[^>]*alt="[^"]*icon[^"]*"[^>]*src="([^"]+)"/i
+            );
           }
           if (!logoMatch) {
             // 일반적인 앱 아이콘 클래스 추출
-            logoMatch = html.match(/<img[^>]*class="[^"]*T75of[^"]*"[^>]*src="([^"]+)"/i);
+            logoMatch = html.match(
+              /<img[^>]*class="[^"]*T75of[^"]*"[^>]*src="([^"]+)"/i
+            );
           }
           if (!logoMatch) {
             // srcset에서 추출 시도
             const srcsetMatch = html.match(/<img[^>]*srcset="([^"]+)"[^>]*>/i);
             if (srcsetMatch && srcsetMatch[1]) {
               // srcset에서 첫 번째 URL 추출
-              const srcsetUrl = srcsetMatch[1].split(',')[0].trim().split(' ')[0];
+              const srcsetUrl = srcsetMatch[1]
+                .split(',')[0]
+                .trim()
+                .split(' ')[0];
               logoMatch = srcsetMatch;
               logoMatch[1] = srcsetUrl;
             }
@@ -357,7 +411,6 @@ export async function POST(request: NextRequest) {
             gameInfo.logo_url = logoUrl;
           }
         }
-        
       } catch (error) {
         console.error('Google Play 스크래핑 오류:', error);
       }
@@ -372,4 +425,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

@@ -85,8 +85,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           profileError.code === 'PGRST116' ||
           profileError.message?.includes('No rows found')
         ) {
-        // 사용자가 이미 auth.users에 있는 경우에만 프로필 자동 생성
-        // (첫 로그인 시)
+          // 사용자가 이미 auth.users에 있는 경우에만 프로필 자동 생성
+          // (첫 로그인 시)
           try {
             const displayName =
               session.user.user_metadata?.full_name ||
@@ -185,16 +185,27 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let isMounted = true;
+    let isCheckingUserRef = false; // checkUserAndFetch 실행 중 여부 추적
 
     // 초기 사용자 확인 및 프로필 가져오기
     const checkUserAndFetch = async () => {
+      // 이미 실행 중이면 중복 호출 방지
+      if (isCheckingUserRef) {
+        return;
+      }
+
       try {
+        isCheckingUserRef = true;
+
         // Supabase에서 사용자 정보 가져오기
         const {
           data: { session },
         } = await supabase.auth.getSession();
 
-        if (!isMounted) return;
+        if (!isMounted) {
+          isCheckingUserRef = false;
+          return;
+        }
 
         if (session?.user) {
           // fetchUserProfile 내부에서 setLoading(false)를 호출합니다
@@ -208,6 +219,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         if (isMounted) {
           finishLoadingWithError();
         }
+      } finally {
+        isCheckingUserRef = false;
       }
     };
 
@@ -243,18 +256,21 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       }
 
       // INITIAL_SESSION 이벤트 처리 (토큰이 localStorage에 있을 때 발생)
-      // 초기 로드 중에만 처리하고, 이미 로딩이 완료되었으면 무시
-      if (event === 'INITIAL_SESSION' && session?.user) {
-        // checkUserAndFetch가 이미 실행 중이거나 완료되었으면 무시
-        // isFetchingProfileRef로 중복 호출 방지
-        if (!hasInitiallyLoadedRef.current && !isFetchingProfileRef.current) {
-          await fetchUserProfile(true); // skipLoading=true로 중복 로딩 방지
-        }
+      // checkUserAndFetch가 이미 초기 로드를 처리하므로, INITIAL_SESSION 이벤트는 완전히 무시
+      // 배포 환경에서 타이밍 이슈를 방지하기 위해 항상 무시함
+      // checkUserAndFetch가 supabase.auth.getSession()을 호출하여 localStorage에서 세션을 직접 읽어옴
+      if (event === 'INITIAL_SESSION') {
+        // checkUserAndFetch가 이미 초기 로드를 처리하므로 이 이벤트는 무시
+        // 이렇게 하면 배포 환경에서 타이밍 경쟁 조건을 완전히 방지할 수 있음
         return;
       }
 
       // SIGNED_IN 이벤트 처리 (초기 로드 중에만)
       if (event === 'SIGNED_IN' && session?.user) {
+        // checkUserAndFetch가 실행 중이면 무시
+        if (isCheckingUserRef) {
+          return;
+        }
         await fetchUserProfile();
         return;
       }
