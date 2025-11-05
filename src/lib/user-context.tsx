@@ -7,7 +7,8 @@ import React, {
   useState,
   useRef,
 } from 'react';
-import { supabase, clearAllSessions } from '@/lib/supabase';
+import { createClient } from '@/utils/supabase/client';
+import { clearAllSessions } from '@/lib/supabase';
 import { UserProfile } from '@/lib/permissions';
 
 interface UserContextType {
@@ -59,6 +60,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       setError(null);
 
       // Supabase에서 현재 사용자 정보 가져오기
+      const supabase = createClient();
       const {
         data: { session },
         error: sessionError,
@@ -198,6 +200,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         isCheckingUserRef = true;
 
         // Supabase에서 사용자 정보 가져오기
+        const supabase = createClient();
         const {
           data: { session },
         } = await supabase.auth.getSession();
@@ -227,6 +230,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     checkUserAndFetch();
 
     // onAuthStateChange로 인증 상태 변경 감지
+    const supabase = createClient();
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {

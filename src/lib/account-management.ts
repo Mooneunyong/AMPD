@@ -1,10 +1,12 @@
 /**
  * 계정 관리 API 함수들
+ * 
+ * 주의: 이 함수들은 클라이언트 사이드에서 사용됩니다.
+ * 서버 사이드에서 사용하려면 서버 사이드 클라이언트를 사용해야 합니다.
  */
 
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/utils/supabase/client';
 import { UserProfile } from '@/lib/permissions';
-import { Database } from '@/lib/database.types';
 
 export interface AccountProfile {
   id: string;
@@ -24,6 +26,7 @@ export interface AccountProfile {
  * 모든 활성화된 사용자 프로필 가져오기
  */
 export async function getActiveUserProfiles(): Promise<UserProfile[]> {
+  const supabase = createClient();
   const { data, error } = await supabase
     .from('user_profiles')
     .select('*')
@@ -55,6 +58,7 @@ export async function addAccount(accountData: {
   country: string;
   assigned_user_id: string;
 }): Promise<AccountProfile> {
+  const supabase = createClient();
   // 먼저 담당자 정보 가져오기
   const { data: userData, error: userError } = await supabase
     .from('user_profiles')
@@ -104,6 +108,7 @@ export async function addAccount(accountData: {
  * 모든 계정 프로필 가져오기
  */
 export async function getAllAccountProfiles(): Promise<AccountProfile[]> {
+  const supabase = createClient();
   // 계정 정보 가져오기
   const { data: accountsData, error: accountsError } = await supabase
     .from('accounts')
@@ -211,6 +216,7 @@ export async function updateAccount(
     assigned_user_id: string;
   }
 ): Promise<AccountProfile> {
+  const supabase = createClient();
   // 먼저 담당자 정보 가져오기
   const { data: userData, error: userError } = await supabase
     .from('user_profiles')
@@ -262,6 +268,7 @@ export async function updateAccount(
  * 계정 삭제
  */
 export async function deleteAccount(accountId: string): Promise<void> {
+  const supabase = createClient();
   const { error } = await supabase
     .from('accounts')
     .delete()

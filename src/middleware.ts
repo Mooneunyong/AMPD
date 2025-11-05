@@ -1,8 +1,9 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import { type NextRequest } from 'next/server';
+import { updateSession } from '@/utils/supabase/middleware';
 
-export function middleware(request: NextRequest) {
-  const response = NextResponse.next();
+export async function middleware(request: NextRequest) {
+  // Supabase 세션 갱신 (쿠키 기반)
+  const response = await updateSession(request);
 
   // 보안 헤더 설정
   response.headers.set('X-DNS-Prefetch-Control', 'on');

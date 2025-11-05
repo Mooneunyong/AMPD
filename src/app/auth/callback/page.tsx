@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/utils/supabase/client';
 
 /**
  * OAuth 콜백 페이지
@@ -21,6 +21,7 @@ export default function AuthCallback() {
         await new Promise((resolve) => setTimeout(resolve, 500));
         
         // 세션 확인
+        const supabase = createClient();
         const { data: { session }, error } = await supabase.auth.getSession();
 
         if (error) {

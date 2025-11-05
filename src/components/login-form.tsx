@@ -15,7 +15,7 @@ import {
   clearAllSessions,
   testLoginFlow,
 } from '@/lib/supabase';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/utils/supabase/client';
 import { testConnection } from '@/lib/test-supabase';
 
 export function LoginForm({
@@ -60,6 +60,7 @@ export function LoginForm({
       setIsLoading(true);
       setError(null);
 
+      const supabase = createClient();
       const { data: sessionData, error: sessionError } =
         await supabase.auth.getSession();
 

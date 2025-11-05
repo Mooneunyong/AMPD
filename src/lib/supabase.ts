@@ -1,18 +1,17 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient as createBrowserClient } from '@/utils/supabase/client';
+import { createClient as createServerClient } from '@/utils/supabase/server';
 import { Database } from './database.types';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-// localStorage에 토큰 저장 (Supabase 기본 동작)
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true, // URL에서 세션 자동 감지
-  },
-});
-
+/**
+ * @deprecated 새로운 클라이언트를 사용하세요:
+ * - 클라이언트 사이드: `import { createClient } from '@/utils/supabase/client'`
+ * - 서버 사이드: `import { createClient } from '@/utils/supabase/server'`
+ * 
+ * 하위 호환성을 위해 유지되지만, 클라이언트 사이드에서만 사용 가능합니다.
+ */
+export const supabase = typeof window !== 'undefined' 
+  ? createBrowserClient()
+  : null as any;
 
 // Google OAuth 로그인 함수 - 간단한 방식
 export const signInWithGoogle = async () => {
@@ -20,6 +19,7 @@ export const signInWithGoogle = async () => {
     throw new Error('signInWithGoogle은 클라이언트 사이드에서만 호출할 수 있습니다.');
   }
 
+  const supabase = createBrowserClient();
   const redirectUrl = `${window.location.origin}/auth/callback`;
 
   const { data, error } = await supabase.auth.signInWithOAuth({
@@ -41,8 +41,13 @@ export const signInWithGoogle = async () => {
   return data;
 };
 
-// 로그아웃 함수
+// 로그아웃 함수 (클라이언트 사이드)
 export const signOut = async () => {
+  if (typeof window === 'undefined') {
+    throw new Error('signOut은 클라이언트 사이드에서만 호출할 수 있습니다.');
+  }
+
+  const supabase = createBrowserClient();
   const { error } = await supabase.auth.signOut();
   if (error) {
     throw error;
@@ -87,8 +92,14 @@ const isAuthSessionMissingError = (error: unknown): boolean => {
 };
 
 // 안전한 세션 확인 함수 (에러를 발생시키지 않음)
+// 클라이언트 사이드에서만 사용 가능
 export const safeGetSession = async () => {
+  if (typeof window === 'undefined') {
+    throw new Error('safeGetSession은 클라이언트 사이드에서만 호출할 수 있습니다.');
+  }
+
   try {
+    const supabase = createBrowserClient();
     const { data, error } = await supabase.auth.getSession();
 
     if (error) {
@@ -113,8 +124,14 @@ export const safeGetSession = async () => {
 };
 
 // 안전한 사용자 정보 확인 함수
+// 클라이언트 사이드에서만 사용 가능
 export const safeGetUser = async () => {
+  if (typeof window === 'undefined') {
+    throw new Error('safeGetUser은 클라이언트 사이드에서만 호출할 수 있습니다.');
+  }
+
   try {
+    const supabase = createBrowserClient();
     const { data, error } = await supabase.auth.getUser();
 
     if (error) {
@@ -153,9 +170,14 @@ const getSupabaseStorageKeys = (storage: Storage): string[] => {
   return keys;
 };
 
-// 세션 완전 초기화
+// 세션 완전 초기화 (클라이언트 사이드)
 export const clearAllSessions = async () => {
+  if (typeof window === 'undefined') {
+    throw new Error('clearAllSessions은 클라이언트 사이드에서만 호출할 수 있습니다.');
+  }
+
   try {
+    const supabase = createBrowserClient();
     // Supabase 세션 종료
     await supabase.auth.signOut();
 
@@ -177,7 +199,12 @@ export const clearAllSessions = async () => {
 
 // 간단한 로그인 테스트 함수 (개발 환경에서만 사용)
 export const testLoginFlow = async () => {
+  if (typeof window === 'undefined') {
+    throw new Error('testLoginFlow은 클라이언트 사이드에서만 호출할 수 있습니다.');
+  }
+
   try {
+    const supabase = createBrowserClient();
     // 1. 현재 세션 상태 확인
     const { data: sessionData, error: sessionError } =
       await supabase.auth.getSession();

@@ -5,7 +5,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/utils/supabase/client';
 import { toast } from 'sonner';
 
 export interface Campaign {
@@ -82,6 +82,7 @@ export const REGION_OPTIONS = [
 
 // 특정 게임의 캠페인 조회
 export async function getCampaignsByGame(gameId: string): Promise<Campaign[]> {
+  const supabase = createClient();
   const { data, error } = await supabase
     .from('campaigns')
     .select(
@@ -117,6 +118,7 @@ export async function getCampaignsByGame(gameId: string): Promise<Campaign[]> {
 export async function getCampaignsByAccount(
   accountId: string
 ): Promise<Campaign[]> {
+  const supabase = createClient();
   const { data, error } = await supabase
     .from('campaigns')
     .select(
@@ -154,6 +156,7 @@ export async function getCampaignsByAccount(
 
 // 모든 캠페인 조회
 export async function getAllCampaigns(): Promise<Campaign[]> {
+  const supabase = createClient();
   const { data, error } = await supabase
     .from('campaigns')
     .select(
@@ -201,6 +204,7 @@ export async function getAllCampaigns(): Promise<Campaign[]> {
 
 // 내가 만든 캠페인 조회
 export async function getMyCampaigns(userId: string): Promise<Campaign[]> {
+  const supabase = createClient();
   const { data, error } = await supabase
     .from('campaigns')
     .select(
@@ -252,6 +256,7 @@ export async function createCampaign(
   campaignData: CampaignFormData
 ): Promise<Campaign> {
   // 현재 사용자 정보 가져오기
+  const supabase = createClient();
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -329,6 +334,7 @@ export async function updateCampaign(
   campaignId: string,
   campaignData: Partial<CampaignFormData>
 ): Promise<Campaign> {
+  const supabase = createClient();
   const updatePayload: any = {
     ...campaignData,
     end_date:
@@ -383,6 +389,7 @@ export async function updateCampaign(
 
 // 캠페인 삭제
 export async function deleteCampaign(campaignId: string): Promise<void> {
+  const supabase = createClient();
   const { error } = await supabase
     .from('campaigns')
     .delete()

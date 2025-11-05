@@ -1,14 +1,18 @@
 /**
  * 사용자 관리 API 함수들
+ * 
+ * 주의: 이 함수들은 클라이언트 사이드에서 사용됩니다.
+ * 서버 사이드에서 사용하려면 서버 사이드 클라이언트를 사용해야 합니다.
  */
 
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/utils/supabase/client';
 import { UserProfile, UserRole } from '@/lib/permissions';
 
 /**
  * 모든 사용자 프로필 가져오기
  */
 export async function getAllUserProfiles(): Promise<UserProfile[]> {
+  const supabase = createClient();
   const { data, error } = await supabase
     .from('user_profiles')
     .select('*')
@@ -76,6 +80,7 @@ export async function updateUserRole(
   userId: string,
   newRole: UserRole
 ): Promise<void> {
+  const supabase = createClient();
   const { error } = await supabase
     .from('user_profiles')
     .update({
@@ -97,6 +102,7 @@ export async function toggleUserActive(
   userId: string,
   isActive: boolean
 ): Promise<void> {
+  const supabase = createClient();
   const { error } = await supabase
     .from('user_profiles')
     .update({
@@ -115,6 +121,7 @@ export async function toggleUserActive(
  * 사용자 삭제
  */
 export async function deleteUser(userId: string): Promise<void> {
+  const supabase = createClient();
   // 먼저 사용자 프로필 정보를 가져와서 auth user_id를 확인
   const { data: profile, error: profileError } = await supabase
     .from('user_profiles')
@@ -157,6 +164,7 @@ export async function addUser(userData: {
   display_name: string;
   role: UserRole;
 }): Promise<UserProfile> {
+  const supabase = createClient();
   // 먼저 Supabase Auth에 사용자 생성
   const { data: authData, error: authError } =
     await supabase.auth.admin.createUser({

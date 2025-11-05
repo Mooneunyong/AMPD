@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { User } from '@supabase/supabase-js';
-import { supabase, signOut as supabaseSignOut } from '@/lib/supabase';
+import { createClient } from '@/utils/supabase/client';
+import { signOut as supabaseSignOut } from '@/lib/supabase';
 
 interface AuthState {
   user: User | null;
@@ -24,6 +25,7 @@ export function useAuth() {
     // 초기 인증 상태 확인
     const checkAuth = async () => {
       try {
+        const supabase = createClient();
         const {
           data: { session },
           error,
@@ -63,6 +65,7 @@ export function useAuth() {
     checkAuth();
 
     // onAuthStateChange로 인증 상태 변경 감지
+    const supabase = createClient();
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {

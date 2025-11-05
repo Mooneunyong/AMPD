@@ -5,7 +5,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/utils/supabase/client';
 import { parsePostgrestError } from '@/lib/utils/api-errors';
 
 export interface Game {
@@ -39,6 +39,7 @@ export const PLATFORM_OPTIONS = [
 
 // 모든 게임 조회 (계정 정보 포함)
 export async function getAllGames(): Promise<Game[]> {
+  const supabase = createClient();
   const { data, error } = await supabase
     .from('games')
     .select(
@@ -67,6 +68,7 @@ export async function getAllGames(): Promise<Game[]> {
 
 // 특정 계정의 게임 조회
 export async function getGamesByAccount(accountId: string): Promise<Game[]> {
+  const supabase = createClient();
   const { data, error } = await supabase
     .from('games')
     .select(
@@ -118,6 +120,7 @@ export async function createGame(gameData: GameFormData): Promise<Game> {
   }
 
   // 중복 체크: 같은 account_id와 game_name 조합이 이미 존재하는지 확인
+  const supabase = createClient();
   const { data: existingGames, error: checkError } = await supabase
     .from('games')
     .select('id, game_name')
@@ -239,6 +242,7 @@ export async function updateGame(
   gameId: string,
   gameData: Partial<GameFormData>
 ): Promise<Game> {
+  const supabase = createClient();
   const { data, error } = await supabase
     .from('games')
     .update(gameData)
@@ -271,6 +275,7 @@ export async function updateGame(
 
 // 게임 삭제
 export async function deleteGame(gameId: string): Promise<void> {
+  const supabase = createClient();
   const { data, error } = await supabase
     .from('games')
     .delete()

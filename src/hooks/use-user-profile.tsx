@@ -2,8 +2,10 @@
  * 사용자 프로필 조회 훅
  */
 
+'use client';
+
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/utils/supabase/client';
 import { UserProfile } from '@/lib/permissions';
 
 interface UseUserProfileReturn {
@@ -24,6 +26,7 @@ export function useUserProfile(): UseUserProfileReturn {
         setError(null);
 
         // 현재 사용자 정보 가져오기
+        const supabase = createClient();
         const {
           data: { user },
           error: userError,
