@@ -54,7 +54,7 @@ import Link from 'next/link';
 // 상수 정의
 const COLUMN_WIDTHS = {
   campaignTitle: '200px',
-  account: '200px',
+  account: '150px',
   gameName: '250px',
   assignedUser: '160px',
   region: '120px',

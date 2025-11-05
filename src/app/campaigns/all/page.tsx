@@ -9,6 +9,7 @@ import {
   ColumnsIcon,
   GlobeIcon,
   SearchIcon,
+  TargetIcon,
 } from 'lucide-react';
 import { AccessControl } from '@/components/access-control';
 import { Button } from '@/components/ui/button';
@@ -308,97 +309,96 @@ export default function AllCampaignsPage() {
           </div>
         </div>
 
-        {/* Stats Cards by Status */}
-        <div className='grid grid-cols-1 gap-4 xl:grid-cols-4'>
-          <Card>
-            <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-              <CardTitle className='text-sm font-medium'>Total</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className='text-2xl font-bold'>{stats.total}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-              <CardTitle className='text-sm font-medium'>Planning</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className='text-2xl font-bold text-yellow-600 dark:text-yellow-500'>
-                {stats.planning}
+        {/* Campaign Statistics Card */}
+        <Card>
+          <CardHeader className='pb-4'>
+            <div className='flex items-center justify-between'>
+              <div>
+                <CardTitle className='text-xl font-bold'>Campaign Statistics</CardTitle>
+                <p className='text-sm text-muted-foreground mt-0.5'>
+                  Overview of all campaigns
+                </p>
               </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-              <CardTitle className='text-sm font-medium'>Ongoing</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className='text-2xl font-bold text-green-600 dark:text-green-500'>
-                {stats.ongoing}
+              <div className='flex items-center gap-6'>
+                <div className='text-right'>
+                  <p className='text-xs text-muted-foreground mb-1'>Total</p>
+                  <p className='text-2xl font-bold'>{stats.total}</p>
+                </div>
               </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-              <CardTitle className='text-sm font-medium'>Holding</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className='text-2xl font-bold text-red-600 dark:text-red-500'>
-                {stats.holding}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className='grid gap-6 md:grid-cols-2 border-t pt-6'>
+              {/* Campaigns by Status */}
+              <div>
+                <div className='flex items-center gap-2 mb-4'>
+                  <TargetIcon className='h-4 w-4 text-muted-foreground' />
+                  <h3 className='text-sm font-semibold'>Campaigns by Status</h3>
+                </div>
+                <div className='grid grid-cols-2 gap-4'>
+                  <div className='p-3 rounded-lg bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-900'>
+                    <p className='text-xs text-muted-foreground mb-1'>Planning</p>
+                    <p className='text-2xl font-bold text-yellow-600 dark:text-yellow-500'>
+                      {stats.planning}
+                    </p>
+                  </div>
+                  <div className='p-3 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900'>
+                    <p className='text-xs text-muted-foreground mb-1'>Ongoing</p>
+                    <p className='text-2xl font-bold text-green-600 dark:text-green-500'>
+                      {stats.ongoing}
+                    </p>
+                  </div>
+                  <div className='p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900'>
+                    <p className='text-xs text-muted-foreground mb-1'>Holding</p>
+                    <p className='text-2xl font-bold text-red-600 dark:text-red-500'>
+                      {stats.holding}
+                    </p>
+                  </div>
+                  <div className='p-3 rounded-lg bg-gray-50 dark:bg-gray-950/20 border border-gray-200 dark:border-gray-800'>
+                    <p className='text-xs text-muted-foreground mb-1'>End</p>
+                    <p className='text-2xl font-bold text-gray-600 dark:text-gray-400'>
+                      {stats.end}
+                    </p>
+                  </div>
+                </div>
               </div>
-            </CardContent>
-          </Card>
-        </div>
 
-        {/* Stats Cards by Region */}
-        <div className='grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4'>
-          <Card>
-            <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-              <CardTitle className='text-sm font-medium'>🇰🇷 Korea</CardTitle>
-              <MapPinIcon className='h-4 w-4 text-muted-foreground' />
-            </CardHeader>
-            <CardContent>
-              <div className='text-2xl font-bold'>
-                {campaignStatsByRegion.KR}
+              {/* Campaigns by Region */}
+              <div>
+                <div className='flex items-center gap-2 mb-4'>
+                  <MapPinIcon className='h-4 w-4 text-muted-foreground' />
+                  <h3 className='text-sm font-semibold'>Campaigns by Region</h3>
+                </div>
+                <div className='grid grid-cols-2 gap-4'>
+                  <div className='p-3 rounded-lg bg-muted/50 border'>
+                    <p className='text-xs text-muted-foreground mb-1'>🇰🇷 KR</p>
+                    <p className='text-2xl font-bold'>
+                      {campaignStatsByRegion.KR}
+                    </p>
+                  </div>
+                  <div className='p-3 rounded-lg bg-muted/50 border'>
+                    <p className='text-xs text-muted-foreground mb-1'>🇯🇵 JP</p>
+                    <p className='text-2xl font-bold'>
+                      {campaignStatsByRegion.JP}
+                    </p>
+                  </div>
+                  <div className='p-3 rounded-lg bg-muted/50 border'>
+                    <p className='text-xs text-muted-foreground mb-1'>🇹🇼 TW</p>
+                    <p className='text-2xl font-bold'>
+                      {campaignStatsByRegion.TW}
+                    </p>
+                  </div>
+                  <div className='p-3 rounded-lg bg-muted/50 border'>
+                    <p className='text-xs text-muted-foreground mb-1'>🇺🇸 US</p>
+                    <p className='text-2xl font-bold'>
+                      {campaignStatsByRegion.US}
+                    </p>
+                  </div>
+                </div>
               </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-              <CardTitle className='text-sm font-medium'>🇯🇵 Japan</CardTitle>
-              <MapPinIcon className='h-4 w-4 text-muted-foreground' />
-            </CardHeader>
-            <CardContent>
-              <div className='text-2xl font-bold'>
-                {campaignStatsByRegion.JP}
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-              <CardTitle className='text-sm font-medium'>🇹🇼 Taiwan</CardTitle>
-              <MapPinIcon className='h-4 w-4 text-muted-foreground' />
-            </CardHeader>
-            <CardContent>
-              <div className='text-2xl font-bold'>
-                {campaignStatsByRegion.TW}
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-              <CardTitle className='text-sm font-medium'>
-                🇺🇸 United States
-              </CardTitle>
-              <MapPinIcon className='h-4 w-4 text-muted-foreground' />
-            </CardHeader>
-            <CardContent>
-              <div className='text-2xl font-bold'>
-                {campaignStatsByRegion.US}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Search - 1450px 이하일 때 위쪽에 표시 */}
         <div className='search-break:hidden'>
