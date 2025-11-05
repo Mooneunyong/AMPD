@@ -66,19 +66,19 @@ const UserCell = React.memo(
       setImageError(true);
     }, []);
 
-    // avatar_url이 있고 에러가 없을 때만 이미지 표시
-    const shouldShowImage = user.avatar_url && !imageError;
+            // avatar_url이 있고 에러가 없을 때만 이미지 표시
+            const shouldShowImage = user.avatar_url && !imageError;
 
-    return (
-      <div className='flex items-center gap-2.5'>
-        <Avatar className='h-7 w-7'>
-          {shouldShowImage ? (
-            <AvatarImage 
-              src={user.avatar_url} 
-              alt={user.display_name || user.email || 'User'}
-              onError={handleImageError}
-            />
-          ) : null}
+            return (
+              <div className='flex items-center gap-2.5'>
+                <Avatar className='h-7 w-7'>
+                  {shouldShowImage && user.avatar_url ? (
+                    <AvatarImage
+                      src={user.avatar_url}
+                      alt={user.display_name || user.email || 'User'}
+                      onError={handleImageError}
+                    />
+                  ) : null}
           <AvatarFallback>
             {user.display_name?.charAt(0) || user.email?.charAt(0) || 'U'}
           </AvatarFallback>
