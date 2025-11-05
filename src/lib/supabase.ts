@@ -239,8 +239,8 @@ export const testLoginFlow = async () => {
         typeof window !== 'undefined'
           ? `${window.location.origin}/auth/callback`
           : 'N/A',
-      supabaseUrl,
-      anonKeyLength: supabaseAnonKey.length,
+      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL || 'N/A',
+      anonKeyLength: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.length || 0,
     };
 
     return {
