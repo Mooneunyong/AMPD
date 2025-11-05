@@ -18,7 +18,7 @@ export interface Campaign {
   mmp: string;
   campaign_type: string;
   start_date: string;
-  end_date: string;
+  end_date: string | null;
   status: string;
   jira_url: string | null;
   daily_report_url: string | null;
@@ -44,7 +44,7 @@ export interface CampaignFormData {
   mmp: string;
   campaign_type: string;
   start_date: string;
-  end_date: string;
+  end_date: string | null;
   status: string;
   jira_url?: string | null;
   daily_report_url?: string | null;
@@ -260,11 +260,17 @@ export async function createCampaign(
     throw new Error('로그인이 필요합니다.');
   }
 
+  // Supabase는 undefined 필드는 무시하므로, nullable 처리
+  const insertPayload: any = {
+    ...campaignData,
+    end_date: campaignData.end_date ?? undefined,
+  };
+
   const { data, error } = await supabase
     .from('campaigns')
     .insert([
       {
-        ...campaignData,
+        ...insertPayload,
         created_by: session.user.id,
       },
     ])
@@ -275,6 +281,7 @@ export async function createCampaign(
         id,
         game_name,
         store_url,
+        package_identifier,
         account_id,
         accounts(
           id,
@@ -290,10 +297,17 @@ export async function createCampaign(
     
     // 더 자세한 에러 메시지 추출
     let errorMessage = '캠페인을 생성할 수 없습니다.';
-    if (error.message) {
+    const errorAny = error as any;
+    if (errorAny.code === '23505') {
+      errorMessage = '동일한 계정에 같은 이름의 캠페인이 이미 존재합니다.';
+    } else if (errorAny.message) {
       errorMessage = error.message;
-    } else if (error.details) {
-      errorMessage = error.details;
+    } else if (errorAny.details) {
+      errorMessage = errorAny.details;
+    } else if (errorAny.hint) {
+      errorMessage = errorAny.hint;
+    } else if (errorAny.code) {
+      errorMessage = `Error code: ${errorAny.code}`;
     } else if (typeof error === 'object' && error !== null) {
       errorMessage = JSON.stringify(error);
     }
@@ -305,6 +319,7 @@ export async function createCampaign(
     ...data,
     game_name: (data.games as any)?.game_name || null,
     game_store_url: (data.games as any)?.store_url || null,
+    game_package_identifier: (data.games as any)?.package_identifier || null,
     account_company: (data.games as any)?.accounts?.company || null,
   };
 }
@@ -314,9 +329,15 @@ export async function updateCampaign(
   campaignId: string,
   campaignData: Partial<CampaignFormData>
 ): Promise<Campaign> {
+  const updatePayload: any = {
+    ...campaignData,
+    end_date:
+      campaignData.end_date === null ? undefined : campaignData.end_date,
+  };
+
   const { data, error } = await supabase
     .from('campaigns')
-    .update(campaignData)
+    .update(updatePayload)
     .eq('id', campaignId)
     .select(
       `

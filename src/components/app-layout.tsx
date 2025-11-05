@@ -43,7 +43,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       if (window.location.pathname === '/auth/callback') {
         return;
       }
-      
+
       window.history.replaceState(
         {},
         document.title,

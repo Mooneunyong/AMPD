@@ -218,147 +218,142 @@ export default function AccountDetailPage() {
           </div>
         </div>
 
-        {/* Account Info Card */}
+        {/* Account Overview Card */}
         <Card>
-          <CardContent className='p-6'>
-            <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-5'>
+          <CardHeader className='pb-4'>
+            <div className='flex items-center justify-between'>
               <div>
-                <p className='text-sm font-medium text-muted-foreground'>
-                  Account
-                </p>
-                <p className='text-lg font-semibold'>
+                <CardTitle className='text-xl font-bold'>
                   {currentAccount.company}
-                </p>
-              </div>
-              <div>
-                <p className='text-sm font-medium text-muted-foreground'>
-                  Country
-                </p>
-                <p className='text-lg font-semibold flex items-center gap-1'>
-                  <MapPinIcon className='h-4 w-4' />
-                  {currentAccount.country}
-                </p>
-              </div>
-              <div>
-                <p className='text-sm font-medium text-muted-foreground'>
-                  Assigned User
-                </p>
-                <p className='text-lg font-semibold flex items-center gap-2'>
-                  <Avatar className='h-5 w-5'>
+                </CardTitle>
+                <div className='flex items-center gap-3 mt-0.5'>
+                  <p className='text-sm text-muted-foreground'>
                     {(() => {
-                      const assignedUser = activeUsers.find(
-                        (u) => u.id === currentAccount.assigned_user_id
-                      );
-                      return assignedUser?.avatar_url ? (
-                        <AvatarImage
-                          src={assignedUser.avatar_url}
-                          alt={currentAccount.assigned_user_name}
-                        />
-                      ) : null;
+                      const countryEmojiMap: Record<string, string> = {
+                        KR: '🇰🇷',
+                        JP: '🇯🇵',
+                        TW: '🇹🇼',
+                        US: '🇺🇸',
+                        CN: '🇨🇳',
+                      };
+                      const emoji = countryEmojiMap[currentAccount.country] || '';
+                      return emoji ? `${emoji} ${currentAccount.country}` : currentAccount.country;
                     })()}
-                    <AvatarFallback className='text-xs'>
-                      {currentAccount.assigned_user_name
-                        ? currentAccount.assigned_user_name
-                            .charAt(0)
-                            .toUpperCase()
-                        : 'U'}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className='truncate'>
-                    {currentAccount.assigned_user_name || 'Unassigned'}
-                  </span>
-                </p>
+                  </p>
+                  <span className='text-sm text-muted-foreground'>•</span>
+                  <div className='flex items-center gap-2'>
+                    <Avatar className='h-4 w-4'>
+                      {(() => {
+                        const assignedUser = activeUsers.find(
+                          (u) => u.id === currentAccount.assigned_user_id
+                        );
+                        return assignedUser?.avatar_url ? (
+                          <AvatarImage
+                            src={assignedUser.avatar_url}
+                            alt={currentAccount.assigned_user_name}
+                          />
+                        ) : null;
+                      })()}
+                      <AvatarFallback className='text-xs'>
+                        {currentAccount.assigned_user_name
+                          ? currentAccount.assigned_user_name
+                              .charAt(0)
+                              .toUpperCase()
+                          : 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className='text-sm text-muted-foreground'>
+                      {currentAccount.assigned_user_name || 'Unassigned'}
+                    </span>
+                  </div>
+                </div>
               </div>
-              <div>
-                <p className='text-sm font-medium text-muted-foreground'>
-                  Games
-                </p>
-                <p className='text-lg font-semibold'>{accountGames.length}</p>
+              <div className='flex items-center gap-6'>
+                <div className='text-right'>
+                  <p className='text-xs text-muted-foreground mb-1'>Games</p>
+                  <p className='text-2xl font-bold'>{accountGames.length}</p>
+                </div>
+                <div className='text-right'>
+                  <p className='text-xs text-muted-foreground mb-1'>Total Campaigns</p>
+                  <p className='text-2xl font-bold'>
+                    {campaignStatsByStatus.total}
+                  </p>
+                </div>
               </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className='grid gap-6 md:grid-cols-2 border-t pt-6'>
+              {/* Campaigns by Status */}
               <div>
-                <p className='text-sm font-medium text-muted-foreground'>
-                  Total Campaigns
-                </p>
-                <p className='text-lg font-semibold'>
-                  {campaignStatsByStatus.total}
-                </p>
+                <div className='flex items-center gap-2 mb-4'>
+                  <TargetIcon className='h-4 w-4 text-muted-foreground' />
+                  <h3 className='text-sm font-semibold'>Campaigns by Status</h3>
+                </div>
+                <div className='grid grid-cols-2 gap-4'>
+                  <div className='p-3 rounded-lg bg-yellow-50 dark:bg-yellow-950/20 border border-yellow-200 dark:border-yellow-900'>
+                    <p className='text-xs text-muted-foreground mb-1'>Planning</p>
+                    <p className='text-2xl font-bold text-yellow-600 dark:text-yellow-500'>
+                      {campaignStatsByStatus.planning}
+                    </p>
+                  </div>
+                  <div className='p-3 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900'>
+                    <p className='text-xs text-muted-foreground mb-1'>Ongoing</p>
+                    <p className='text-2xl font-bold text-green-600 dark:text-green-500'>
+                      {campaignStatsByStatus.ongoing}
+                    </p>
+                  </div>
+                  <div className='p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900'>
+                    <p className='text-xs text-muted-foreground mb-1'>Holding</p>
+                    <p className='text-2xl font-bold text-red-600 dark:text-red-500'>
+                      {campaignStatsByStatus.holding}
+                    </p>
+                  </div>
+                  <div className='p-3 rounded-lg bg-gray-50 dark:bg-gray-950/20 border border-gray-200 dark:border-gray-800'>
+                    <p className='text-xs text-muted-foreground mb-1'>End</p>
+                    <p className='text-2xl font-bold text-gray-600 dark:text-gray-400'>
+                      {campaignStatsByStatus.end}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Campaigns by Region */}
+              <div>
+                <div className='flex items-center gap-2 mb-4'>
+                  <MapPinIcon className='h-4 w-4 text-muted-foreground' />
+                  <h3 className='text-sm font-semibold'>Campaigns by Region</h3>
+                </div>
+                <div className='grid grid-cols-2 gap-4'>
+                  <div className='p-3 rounded-lg bg-muted/50 border'>
+                    <p className='text-xs text-muted-foreground mb-1'>🇰🇷 KR</p>
+                    <p className='text-2xl font-bold'>
+                      {campaignStatsByRegion.KR}
+                    </p>
+                  </div>
+                  <div className='p-3 rounded-lg bg-muted/50 border'>
+                    <p className='text-xs text-muted-foreground mb-1'>🇯🇵 JP</p>
+                    <p className='text-2xl font-bold'>
+                      {campaignStatsByRegion.JP}
+                    </p>
+                  </div>
+                  <div className='p-3 rounded-lg bg-muted/50 border'>
+                    <p className='text-xs text-muted-foreground mb-1'>🇹🇼 TW</p>
+                    <p className='text-2xl font-bold'>
+                      {campaignStatsByRegion.TW}
+                    </p>
+                  </div>
+                  <div className='p-3 rounded-lg bg-muted/50 border'>
+                    <p className='text-xs text-muted-foreground mb-1'>🇺🇸 US</p>
+                    <p className='text-2xl font-bold'>
+                      {campaignStatsByRegion.US}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </CardContent>
         </Card>
-
-        {/* Campaign Statistics Cards */}
-        <div className='grid gap-4 md:grid-cols-2'>
-          {/* Campaign Status Statistics */}
-          <Card>
-            <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-              <CardTitle className='text-sm font-medium'>
-                Campaigns by Status
-              </CardTitle>
-              <TargetIcon className='h-4 w-4 text-muted-foreground' />
-            </CardHeader>
-            <CardContent>
-              <div className='space-y-2 text-sm'>
-                <div className='flex items-center justify-between'>
-                  <span className='text-yellow-600 dark:text-yellow-500'>
-                    Planning
-                  </span>
-                  <span className='font-medium'>
-                    {campaignStatsByStatus.planning}
-                  </span>
-                </div>
-                <div className='flex items-center justify-between'>
-                  <span className='text-green-600 dark:text-green-500'>
-                    Ongoing
-                  </span>
-                  <span className='font-medium'>
-                    {campaignStatsByStatus.ongoing}
-                  </span>
-                </div>
-                <div className='flex items-center justify-between'>
-                  <span className='text-red-600 dark:text-red-500'>Holding</span>
-                  <span className='font-medium'>
-                    {campaignStatsByStatus.holding}
-                  </span>
-                </div>
-                <div className='flex items-center justify-between'>
-                  <span className='text-gray-500 dark:text-gray-400'>End</span>
-                  <span className='font-medium'>{campaignStatsByStatus.end}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Campaign Region Statistics */}
-          <Card>
-            <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
-              <CardTitle className='text-sm font-medium'>
-                Campaigns by Region
-              </CardTitle>
-              <MapPinIcon className='h-4 w-4 text-muted-foreground' />
-            </CardHeader>
-            <CardContent>
-              <div className='space-y-2 text-sm'>
-                <div className='flex items-center justify-between'>
-                  <span>🇰🇷 Korea</span>
-                  <span className='font-medium'>{campaignStatsByRegion.KR}</span>
-                </div>
-                <div className='flex items-center justify-between'>
-                  <span>🇯🇵 Japan</span>
-                  <span className='font-medium'>{campaignStatsByRegion.JP}</span>
-                </div>
-                <div className='flex items-center justify-between'>
-                  <span>🇹🇼 Taiwan</span>
-                  <span className='font-medium'>{campaignStatsByRegion.TW}</span>
-                </div>
-                <div className='flex items-center justify-between'>
-                  <span>🇺🇸 United States</span>
-                  <span className='font-medium'>{campaignStatsByRegion.US}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
 
         {/* Create Game Form */}
         <CreateGameForm

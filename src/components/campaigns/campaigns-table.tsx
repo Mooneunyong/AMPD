@@ -114,8 +114,7 @@ function getTypeDisplay(type: string | null): string {
 }
 
 function getRegionDisplay(region: string | null): string {
-  const regionOption = REGION_OPTIONS.find((option) => option.value === region);
-  if (!regionOption) return region || 'Unknown';
+  if (!region) return 'Unknown';
 
   const regionEmojiMap: Record<string, string> = {
     KR: '🇰🇷',
@@ -124,8 +123,8 @@ function getRegionDisplay(region: string | null): string {
     US: '🇺🇸',
   };
 
-  const emoji = region ? regionEmojiMap[region] || '' : '';
-  return emoji ? `${emoji} ${regionOption.label}` : regionOption.label;
+  const emoji = regionEmojiMap[region] || '';
+  return emoji ? `${emoji} ${region}` : region;
 }
 
 function getMMPDisplay(mmp: string | null): string {
@@ -597,7 +596,7 @@ function CampaignTableRow({
         </TableCell>
       )}
       {columnVisibility.region && (
-        <TableCell style={{ width: COLUMN_WIDTHS.region }}>
+        <TableCell style={{ width: COLUMN_WIDTHS.region }} className='text-center'>
           <div className='text-sm text-muted-foreground'>
             {getRegionDisplay(campaign.region)}
           </div>
@@ -810,7 +809,7 @@ export function CampaignsTable({
                   </TableHead>
                 )}
                 {columnVisibility.region && (
-                  <TableHead style={{ width: COLUMN_WIDTHS.region }}>
+                  <TableHead style={{ width: COLUMN_WIDTHS.region }} className='text-center'>
                     Region
                   </TableHead>
                 )}

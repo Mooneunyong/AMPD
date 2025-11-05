@@ -65,7 +65,7 @@ export function CreateCampaignForm({
     mmp: '',
     campaign_type: '',
     start_date: '',
-    end_date: '',
+    end_date: null,
     status: '',
     jira_url: null,
     daily_report_url: null,
@@ -129,7 +129,7 @@ export function CreateCampaignForm({
         mmp: '',
         campaign_type: '',
         start_date: '',
-        end_date: '',
+        end_date: null,
         status: '',
         jira_url: null,
         daily_report_url: null,
@@ -177,12 +177,10 @@ export function CreateCampaignForm({
       return false;
     }
 
-    if (!newCampaign.end_date) {
-      toast.error('Please select end date.');
-      return false;
-    }
-
-    if (new Date(newCampaign.start_date) > new Date(newCampaign.end_date)) {
+    if (
+      newCampaign.end_date &&
+      new Date(newCampaign.start_date) > new Date(newCampaign.end_date)
+    ) {
       toast.error('End date must be after start date.');
       return false;
     }
@@ -636,7 +634,7 @@ export function CreateCampaignForm({
 
             <div className='space-y-2'>
               <Label htmlFor='end-date'>
-                End Date <span className='text-red-500'>*</span>
+                End Date
               </Label>
               <Popover>
                 <PopoverTrigger asChild>

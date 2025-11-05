@@ -50,27 +50,56 @@ interface UserCellProps {
 }
 
 const UserCell = React.memo(
-  ({ user }: UserCellProps) => (
-    <div className='flex items-center gap-2.5'>
-      <Avatar className='h-7 w-7'>
-        <AvatarImage src={user.avatar_url || ''} />
-        <AvatarFallback>
-          {user.display_name?.charAt(0) || user.email?.charAt(0) || 'U'}
-        </AvatarFallback>
-      </Avatar>
-      <div>
-        <div className='font-medium leading-tight'>
-          {user.display_name || 'Unknown'}
-        </div>
-        <div className='text-xs text-muted-foreground leading-tight'>
-          {user.email}
+  ({ user }: UserCellProps) => {
+    const [imageError, setImageError] = React.useState(false);
+    const lastAvatarUrlRef = React.useRef(user.avatar_url);
+    
+    // avatar_url이 변경되면 에러 상태 리셋
+    React.useEffect(() => {
+      if (lastAvatarUrlRef.current !== user.avatar_url) {
+        lastAvatarUrlRef.current = user.avatar_url;
+        setImageError(false);
+      }
+    }, [user.avatar_url]);
+    
+    const handleImageError = React.useCallback(() => {
+      setImageError(true);
+    }, []);
+
+    // avatar_url이 있고 에러가 없을 때만 이미지 표시
+    const shouldShowImage = user.avatar_url && !imageError;
+
+    return (
+      <div className='flex items-center gap-2.5'>
+        <Avatar className='h-7 w-7'>
+          {shouldShowImage ? (
+            <AvatarImage 
+              src={user.avatar_url} 
+              alt={user.display_name || user.email || 'User'}
+              onError={handleImageError}
+            />
+          ) : null}
+          <AvatarFallback>
+            {user.display_name?.charAt(0) || user.email?.charAt(0) || 'U'}
+          </AvatarFallback>
+        </Avatar>
+        <div>
+          <div className='font-medium leading-tight'>
+            {user.display_name || 'Unknown'}
+          </div>
+          <div className='text-xs text-muted-foreground leading-tight'>
+            {user.email}
+          </div>
         </div>
       </div>
-    </div>
-  ),
-  // 커스텀 비교 함수: user.id만 비교 (다른 속성 변경 무시)
+    );
+  },
+  // 커스텀 비교 함수: user.id와 avatar_url 비교
   (prevProps, nextProps) => {
-    return prevProps.user.id === nextProps.user.id;
+    return (
+      prevProps.user.id === nextProps.user.id &&
+      prevProps.user.avatar_url === nextProps.user.avatar_url
+    );
   }
 );
 UserCell.displayName = 'UserCell';
