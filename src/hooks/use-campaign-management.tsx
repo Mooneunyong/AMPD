@@ -59,45 +59,20 @@ export const CAMPAIGN_STATUS_OPTIONS = [
 ];
 
 // 캠페인 타입 옵션
-export const CAMPAIGN_TYPE_OPTIONS = [
-  { value: 'ua', label: 'UA' },
-  { value: 'retention', label: 'Retention' },
-  { value: 'reengagement', label: 'Re-engagement' },
-];
+export const CAMPAIGN_TYPE_OPTIONS = [{ value: 'CPI', label: 'CPI' }];
 
-// MMP 옵션
+// MMP 옵션 (데이터베이스 check constraint와 일치해야 함)
 export const MMP_OPTIONS = [
-  { value: 'appsflyer', label: 'AppsFlyer' },
-  { value: 'adjust', label: 'Adjust' },
-  { value: 'singular', label: 'Singular' },
-  { value: 'branch', label: 'Branch' },
-  { value: 'kochava', label: 'Kochava' },
+  { value: 'AppsFlyer', label: 'AppsFlyer' },
+  { value: 'Adjust', label: 'Adjust' },
 ];
 
 // 지역 옵션
 export const REGION_OPTIONS = [
   { value: 'KR', label: 'Korea' },
-  { value: 'US', label: 'United States' },
   { value: 'JP', label: 'Japan' },
-  { value: 'CN', label: 'China' },
-  { value: 'GB', label: 'United Kingdom' },
-  { value: 'DE', label: 'Germany' },
-  { value: 'FR', label: 'France' },
-  { value: 'IT', label: 'Italy' },
-  { value: 'ES', label: 'Spain' },
-  { value: 'CA', label: 'Canada' },
-  { value: 'AU', label: 'Australia' },
-  { value: 'BR', label: 'Brazil' },
-  { value: 'MX', label: 'Mexico' },
-  { value: 'IN', label: 'India' },
-  { value: 'SG', label: 'Singapore' },
   { value: 'TW', label: 'Taiwan' },
-  { value: 'HK', label: 'Hong Kong' },
-  { value: 'TH', label: 'Thailand' },
-  { value: 'VN', label: 'Vietnam' },
-  { value: 'ID', label: 'Indonesia' },
-  { value: 'PH', label: 'Philippines' },
-  { value: 'MY', label: 'Malaysia' },
+  { value: 'US', label: 'United States' },
 ];
 
 // 단일 캠페인 조회
@@ -344,9 +319,22 @@ export async function createCampaign(
   campaignData: CampaignFormData
 ): Promise<Campaign> {
   const supabase = createClient();
+
+  // 현재 사용자 ID 가져오기
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    console.error('사용자 인증 오류:', userError);
+    throw new Error('사용자 인증이 필요합니다.');
+  }
+
   const insertPayload: any = {
     ...campaignData,
     end_date: campaignData.end_date ?? undefined,
+    created_by: user.id,
   };
 
   const { data, error } = await supabase
@@ -376,14 +364,26 @@ export async function createCampaign(
     .single();
 
   if (error) {
-    console.error('캠페인 생성 오류:', error);
+    // 에러 객체를 any로 캐스팅하여 속성 접근
     const errorAny = error as any;
+
+    // 에러 정보 추출
     const errorMessage =
       errorAny.message ||
       errorAny.details ||
       errorAny.hint ||
       errorAny.code ||
-      '캠페인을 생성할 수 없습니다.';
+      '알 수 없는 오류';
+
+    console.error('캠페인 생성 오류 발생');
+    console.error('에러 메시지:', errorMessage);
+    console.error('에러 코드:', errorAny.code);
+    console.error('에러 상세:', errorAny.details);
+    console.error('에러 힌트:', errorAny.hint);
+    console.error('전체 에러 객체:', error);
+    console.error('에러 객체 타입:', typeof error);
+    console.error('에러 객체 키:', Object.keys(error || {}));
+    console.error('캠페인 데이터:', JSON.stringify(campaignData, null, 2));
 
     // 중복 이름 오류 처리
     if (errorAny.code === '23505') {

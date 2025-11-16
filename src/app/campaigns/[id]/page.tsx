@@ -1,13 +1,17 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
   TargetIcon,
   RefreshCw,
   ExternalLink,
+  ExternalLinkIcon,
   CalendarIcon,
+  MoreHorizontalIcon,
+  EditIcon,
+  TrashIcon,
 } from 'lucide-react';
 import { AccessControl } from '@/components/access-control';
 import { Button } from '@/components/ui/button';
@@ -39,9 +43,21 @@ import {
 } from '@/components/ui/popover';
 import { TableWrapper, TABLE_STYLES } from '@/components/common/table-wrapper';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { canManageResource } from '@/lib/utils/permissions';
+import { useUserContext } from '@/lib/user-context';
+import {
   getCampaignById,
+  updateCampaign,
+  deleteCampaign,
   type Campaign,
   CAMPAIGN_STATUS_OPTIONS,
+  CAMPAIGN_TYPE_OPTIONS,
+  MMP_OPTIONS,
   REGION_OPTIONS,
 } from '@/hooks/use-campaign-management';
 import {
@@ -53,6 +69,17 @@ import {
 import { useGameInfo } from '@/hooks/use-game-info';
 import { useUserManagement } from '@/hooks/use-user-management';
 import { GameThumbnailTooltip } from '@/components/common/game-thumbnail-tooltip';
+import { EditCampaignForm } from '@/components/campaigns/edit-campaign-form';
+import { DeleteConfirmationDialog } from '@/components/common/delete-confirmation-dialog';
+import { getAllGames } from '@/hooks/use-game-management';
+import { convertStoreUrlByRegion } from '@/lib/store-url-utils';
+import { formatDateYYYYMMDD } from '@/lib/utils/date';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface SheetData {
   [key: string]: any;
@@ -91,6 +118,9 @@ export default function CampaignDetailPage() {
   const [data, setData] = useState<SheetData[] | null>(null);
   const [dataLoading, setDataLoading] = useState(false);
   const [dataError, setDataError] = useState<string | null>(null);
+  const [showEditCampaignForm, setShowEditCampaignForm] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [allGames, setAllGames] = useState<any[]>([]);
   const [dateRange, setDateRange] = useState<
     | {
         from: Date | undefined;
@@ -109,6 +139,83 @@ export default function CampaignDetailPage() {
   const [lastDate, setLastDate] = useState<Date | null>(null); // 마지막 날짜 저장
 
   const { users: activeUsers } = useUserManagement();
+  const { profile: userProfile } = useUserContext();
+
+  // 권한 확인
+  const assignedUserId =
+    campaign?.assigned_user_id !== undefined ? campaign.assigned_user_id : '';
+  const isManageAllowed = canManageResource(userProfile, assignedUserId);
+
+  // 게임 목록 로드
+  useEffect(() => {
+    const loadGames = async () => {
+      try {
+        const games = await getAllGames();
+        setAllGames(games);
+      } catch (err) {
+        console.error('게임 로드 오류:', err);
+      }
+    };
+    loadGames();
+  }, []);
+
+  // 캠페인 수정
+  const handleUpdateCampaign = useCallback(
+    async (
+      campaignId: string,
+      campaignData: Partial<Campaign>
+    ): Promise<void> => {
+      try {
+        const updatedCampaign = await updateCampaign(campaignId, campaignData);
+        setCampaign(updatedCampaign);
+        toast.success('Campaign updated successfully.');
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error
+            ? err.message
+            : 'An error occurred while updating the campaign.';
+        toast.error(`Failed to update campaign: ${errorMessage}`);
+        throw err;
+      }
+    },
+    []
+  );
+
+  // 편집 핸들러
+  const handleEditCampaign = useCallback(() => {
+    if (!campaign) return;
+    setShowEditCampaignForm(true);
+  }, [campaign]);
+
+  // 삭제 클릭 핸들러
+  const handleDeleteClick = useCallback(() => {
+    if (!campaign) return;
+
+    if (!isManageAllowed) {
+      toast.error(
+        'You can only delete campaigns from accounts assigned to you.'
+      );
+      return;
+    }
+    setShowDeleteDialog(true);
+  }, [campaign, isManageAllowed]);
+
+  // 삭제 확인 핸들러
+  const handleDeleteCampaign = useCallback(async () => {
+    if (!campaign) return;
+
+    try {
+      await deleteCampaign(campaign.id);
+      toast.success('Campaign deleted successfully');
+      router.push('/campaigns/all');
+    } catch (err) {
+      toast.error(
+        `Failed to delete campaign: ${
+          err instanceof Error ? err.message : 'Unknown error'
+        }`
+      );
+    }
+  }, [campaign, router]);
 
   // 게임 이미지 가져오기 (캠페인 로드 후 즉시 시작)
   const { data: gameInfo, isLoading: imageLoading } = useGameInfo(
@@ -413,6 +520,40 @@ export default function CampaignDetailPage() {
     return emoji ? `${emoji} ${region}` : region;
   };
 
+  // 타입 표시용 함수
+  const getTypeDisplay = (type: string | null): string => {
+    const typeOption = CAMPAIGN_TYPE_OPTIONS.find(
+      (option) => option.value === type
+    );
+    return typeOption?.label || type || 'Unknown';
+  };
+
+  // MMP 표시용 함수
+  const getMMPDisplay = (mmp: string | null): string => {
+    const mmpOption = MMP_OPTIONS.find((option) => option.value === mmp);
+    return mmpOption?.label || mmp || 'Unknown';
+  };
+
+  // 지역별 URL 생성
+  const regionalUrl = useMemo(() => {
+    if (campaign?.game_store_url && campaign?.region) {
+      return convertStoreUrlByRegion(campaign.game_store_url, campaign.region);
+    }
+    return null;
+  }, [campaign?.game_store_url, campaign?.region]);
+
+  // 지역별 게임 정보 가져오기
+  const { data: regionalGameInfo, isLoading: gameNameLoading } = useGameInfo(
+    regionalUrl,
+    {
+      enabled: !!regionalUrl,
+      staleTime: 1000 * 60 * 10,
+      gcTime: 1000 * 60 * 30,
+    }
+  );
+
+  const regionalGameName = regionalGameInfo?.game_name || null;
+
   if (loading) {
     return (
       <AccessControl>
@@ -482,138 +623,339 @@ export default function CampaignDetailPage() {
           </div>
         </div>
 
-        {/* Campaign Overview Card */}
-        <Card>
-          <CardHeader className='pb-4'>
-            <div className='flex items-center justify-between'>
-              <div>
-                <CardTitle className='text-xl font-bold'>
-                  {campaign.name}
-                </CardTitle>
-                <div className='flex items-center gap-3 mt-0.5'>
-                  <p className='text-sm text-muted-foreground'>
-                    {campaign.start_date} - {campaign.end_date || '-'}
-                  </p>
-                  <span className='text-sm text-muted-foreground'>•</span>
-                  <p className='text-sm text-muted-foreground'>
-                    {getRegionDisplay(campaign.region)}
-                  </p>
-                  {assignedUser && (
-                    <>
-                      <span className='text-sm text-muted-foreground'>•</span>
-                      <div className='flex items-center gap-2'>
-                        <Avatar className='h-4 w-4'>
-                          {assignedUser.avatar_url ? (
-                            <AvatarImage
-                              src={assignedUser.avatar_url}
-                              alt={
-                                assignedUser.display_name ||
-                                assignedUser.email ||
-                                'User'
-                              }
-                            />
-                          ) : null}
-                          <AvatarFallback className='text-xs'>
-                            {assignedUser.display_name
-                              ? assignedUser.display_name
-                                  .charAt(0)
-                                  .toUpperCase()
-                              : assignedUser.email
-                              ? assignedUser.email.charAt(0).toUpperCase()
-                              : 'U'}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className='text-sm text-muted-foreground'>
-                          {assignedUser.display_name ||
-                            assignedUser.email ||
-                            'Unassigned'}
-                        </span>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className='grid gap-4 md:grid-cols-3'>
-              <div>
-                <p className='text-sm text-muted-foreground mb-1'>Account</p>
-                {campaign.account_id && campaign.account_company ? (
-                  <Link
-                    href={`/accounts/${campaign.account_id}`}
-                    className='font-medium text-primary hover:underline inline'
-                  >
-                    {campaign.account_company}
-                  </Link>
-                ) : (
-                  <p className='font-medium'>
-                    {campaign.account_company || '-'}
-                  </p>
-                )}
-              </div>
-              <div>
-                <p className='text-sm text-muted-foreground mb-1'>Game</p>
-                {campaign.game_store_url ? (
-                  <div className='flex items-center gap-2'>
-                    {imageLoading ? (
-                      <div className='w-6 h-6 rounded-lg border border-border bg-muted flex items-center justify-center animate-pulse flex-shrink-0'>
-                        <span className='text-[8px] text-muted-foreground'>
-                          ...
-                        </span>
-                      </div>
-                    ) : imageUrl ? (
-                      <div className='w-6 h-6 rounded-lg border border-border overflow-hidden flex items-center justify-center bg-muted flex-shrink-0'>
-                        <Image
-                          src={imageUrl}
-                          alt={campaign.game_name || 'Game'}
-                          width={24}
-                          height={24}
-                          className='max-w-full max-h-full w-auto h-auto object-contain'
-                          unoptimized
-                          loading='lazy'
-                        />
-                      </div>
-                    ) : (
-                      <div className='w-6 h-6 rounded-lg border border-border bg-muted flex items-center justify-center flex-shrink-0'>
-                        <span className='text-[8px] text-muted-foreground'>
-                          -
-                        </span>
-                      </div>
-                    )}
-                    <GameThumbnailTooltip
-                      imageUrl={imageUrl}
-                      gameName={campaign.game_name || null}
-                      packageIdentifier={
-                        campaign.game_package_identifier || null
-                      }
-                      storeUrl={campaign.game_store_url || null}
-                      storeFaviconUrl={storeFaviconUrl || null}
-                      enableCopy={true}
+        {/* Campaign Information */}
+        <div className='space-y-4'>
+          {/* Information Table */}
+          <TableWrapper>
+            <div className='overflow-x-auto'>
+              <Table style={{ tableLayout: 'fixed', width: '100%' }}>
+                <TableHeader className={TABLE_STYLES.header}>
+                  <TableRow>
+                    <TableHead style={{ width: '200px' }}>
+                      Campaign Name
+                    </TableHead>
+                    <TableHead style={{ width: '150px' }}>Account</TableHead>
+                    <TableHead style={{ width: '250px' }}>Game Name</TableHead>
+                    <TableHead style={{ width: '160px' }}>
+                      Assigned User
+                    </TableHead>
+                    <TableHead
+                      style={{ width: '120px' }}
+                      className='text-center'
                     >
-                      <span className='font-medium hover:text-primary cursor-pointer'>
-                        {campaign.game_name || '-'}
-                      </span>
-                    </GameThumbnailTooltip>
-                  </div>
-                ) : (
-                  <p className='font-medium'>{campaign.game_name || '-'}</p>
-                )}
-              </div>
-              <div>
-                <p className='text-sm text-muted-foreground mb-1'>Status</p>
-                <Badge
-                  variant={getStatusDisplay(campaign.status).variant}
-                  className={`inline-flex items-center justify-center min-w-[70px] font-medium ${
-                    getStatusDisplay(campaign.status).color
-                  }`}
-                >
-                  {getStatusDisplay(campaign.status).label}
-                </Badge>
-              </div>
+                      Region
+                    </TableHead>
+                    <TableHead
+                      style={{ width: '80px' }}
+                      className='text-center'
+                    >
+                      MMP
+                    </TableHead>
+                    <TableHead style={{ width: '120px' }}>Type</TableHead>
+                    <TableHead style={{ width: '200px' }}>Date Range</TableHead>
+                    <TableHead
+                      style={{ width: '100px' }}
+                      className='text-center'
+                    >
+                      Jira URL
+                    </TableHead>
+                    <TableHead
+                      style={{ width: '100px' }}
+                      className='text-center'
+                    >
+                      Report URL
+                    </TableHead>
+                    <TableHead style={{ width: '60px' }}></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className={TABLE_STYLES.body}>
+                  <TableRow>
+                    {/* Campaign Name */}
+                    <TableCell>
+                      <div className='text-sm font-medium truncate'>
+                        {campaign.name || '-'}
+                      </div>
+                    </TableCell>
+
+                    {/* Account */}
+                    <TableCell>
+                      {campaign.account_id && campaign.account_company ? (
+                        <Link
+                          href={`/accounts/${campaign.account_id}`}
+                          className='text-sm font-medium text-primary hover:underline truncate block'
+                        >
+                          {campaign.account_company}
+                        </Link>
+                      ) : (
+                        <span className='text-sm text-muted-foreground'>
+                          Unknown
+                        </span>
+                      )}
+                    </TableCell>
+
+                    {/* Game Name */}
+                    <TableCell>
+                      {regionalUrl ? (
+                        <GameThumbnailTooltip
+                          imageUrl={imageUrl}
+                          gameName={
+                            gameNameLoading
+                              ? null
+                              : regionalGameName || campaign.game_name || null
+                          }
+                          packageIdentifier={
+                            campaign.game_package_identifier || null
+                          }
+                          storeUrl={regionalUrl}
+                          storeFaviconUrl={storeFaviconUrl || null}
+                          enableCopy={true}
+                        >
+                          <a
+                            href={regionalUrl}
+                            target='_blank'
+                            rel='noopener noreferrer'
+                            className='flex items-center gap-2 flex-1 min-w-0'
+                          >
+                            {imageLoading ? (
+                              <div className='w-6 h-6 rounded-lg border border-border bg-muted flex items-center justify-center animate-pulse flex-shrink-0'>
+                                <span className='text-[8px] text-muted-foreground'>
+                                  ...
+                                </span>
+                              </div>
+                            ) : imageUrl ? (
+                              <div className='w-6 h-6 rounded-lg border border-border overflow-hidden flex items-center justify-center bg-muted flex-shrink-0'>
+                                <Image
+                                  src={imageUrl}
+                                  alt={campaign.game_name || 'Game'}
+                                  width={24}
+                                  height={24}
+                                  className='max-w-full max-h-full w-auto h-auto object-contain'
+                                  unoptimized
+                                />
+                              </div>
+                            ) : (
+                              <div className='w-6 h-6 rounded-lg border border-border bg-muted flex items-center justify-center flex-shrink-0'>
+                                <span className='text-[8px] text-muted-foreground'>
+                                  -
+                                </span>
+                              </div>
+                            )}
+                            <span className='text-sm truncate w-[180px] max-w-[180px] hover:text-primary'>
+                              {gameNameLoading
+                                ? '...'
+                                : regionalGameName || campaign.game_name || '-'}
+                            </span>
+                          </a>
+                        </GameThumbnailTooltip>
+                      ) : (
+                        <div className='flex items-center gap-2 flex-1 min-w-0'>
+                          {imageLoading ? (
+                            <div className='w-6 h-6 rounded-lg border border-border bg-muted flex items-center justify-center animate-pulse flex-shrink-0'>
+                              <span className='text-[8px] text-muted-foreground'>
+                                ...
+                              </span>
+                            </div>
+                          ) : imageUrl ? (
+                            <div className='w-6 h-6 rounded-lg border border-border overflow-hidden flex items-center justify-center bg-muted flex-shrink-0'>
+                              <Image
+                                src={imageUrl}
+                                alt={campaign.game_name || 'Game'}
+                                width={24}
+                                height={24}
+                                className='max-w-full max-h-full w-auto h-auto object-contain'
+                                unoptimized
+                              />
+                            </div>
+                          ) : (
+                            <div className='w-6 h-6 rounded-lg border border-border bg-muted flex items-center justify-center flex-shrink-0'>
+                              <span className='text-[8px] text-muted-foreground'>
+                                -
+                              </span>
+                            </div>
+                          )}
+                          <span className='text-sm truncate w-[180px] max-w-[180px]'>
+                            {campaign.game_name || '-'}
+                          </span>
+                        </div>
+                      )}
+                    </TableCell>
+
+                    {/* Assigned User */}
+                    <TableCell>
+                      <div className='flex items-center gap-2'>
+                        {campaign.assigned_user_name ? (
+                          <>
+                            <Avatar className='h-5 w-5'>
+                              {campaign.assigned_user_avatar_url ? (
+                                <AvatarImage
+                                  src={campaign.assigned_user_avatar_url}
+                                  alt={campaign.assigned_user_name}
+                                />
+                              ) : null}
+                              <AvatarFallback className='text-xs'>
+                                {campaign.assigned_user_name
+                                  .charAt(0)
+                                  .toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className='text-xs font-medium truncate'>
+                              {campaign.assigned_user_name}
+                            </div>
+                          </>
+                        ) : (
+                          <div className='text-xs text-muted-foreground'>
+                            Unassigned
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
+
+                    {/* Region */}
+                    <TableCell className='text-center'>
+                      <div className='text-sm text-muted-foreground'>
+                        {getRegionDisplay(campaign.region)}
+                      </div>
+                    </TableCell>
+
+                    {/* MMP */}
+                    <TableCell className='text-center'>
+                      {campaign.mmp === 'Adjust' ? (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className='flex items-center justify-center w-5 h-5 flex-shrink-0 mx-auto'>
+                                <Image
+                                  src='/Adjust Logo.svg'
+                                  alt='Adjust'
+                                  width={20}
+                                  height={20}
+                                  className='object-contain'
+                                  unoptimized
+                                />
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Adjust</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      ) : campaign.mmp === 'AppsFlyer' ? (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className='flex items-center justify-center w-5 h-5 flex-shrink-0 mx-auto'>
+                                <Image
+                                  src='/AppsFlyer Logo.svg'
+                                  alt='AppsFlyer'
+                                  width={20}
+                                  height={20}
+                                  className='object-contain w-auto h-auto'
+                                  unoptimized
+                                />
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>AppsFlyer</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      ) : null}
+                    </TableCell>
+
+                    {/* Type */}
+                    <TableCell>
+                      <div className='text-sm text-muted-foreground'>
+                        {getTypeDisplay(campaign.campaign_type)}
+                      </div>
+                    </TableCell>
+
+                    {/* Date Range */}
+                    <TableCell>
+                      <div className='text-sm text-muted-foreground'>
+                        {formatDateYYYYMMDD(campaign.start_date)} ~{' '}
+                        {formatDateYYYYMMDD(campaign.end_date)}
+                      </div>
+                    </TableCell>
+
+                    {/* Jira URL */}
+                    <TableCell className='text-center'>
+                      {campaign.jira_url ? (
+                        <a
+                          href={campaign.jira_url}
+                          target='_blank'
+                          rel='noopener noreferrer'
+                          className='inline-flex items-center justify-center text-primary hover:underline'
+                        >
+                          <ExternalLinkIcon className='h-4 w-4' />
+                        </a>
+                      ) : (
+                        <span className='text-sm text-muted-foreground'>-</span>
+                      )}
+                    </TableCell>
+
+                    {/* Report URL */}
+                    <TableCell className='text-center'>
+                      {campaign.daily_report_url ? (
+                        <a
+                          href={campaign.daily_report_url}
+                          target='_blank'
+                          rel='noopener noreferrer'
+                          className='inline-flex items-center justify-center text-primary hover:underline'
+                        >
+                          <ExternalLinkIcon className='h-4 w-4' />
+                        </a>
+                      ) : (
+                        <span className='text-sm text-muted-foreground'>-</span>
+                      )}
+                    </TableCell>
+
+                    {/* Actions */}
+                    <TableCell
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'flex-end',
+                      }}
+                    >
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant='ghost'
+                            className='flex size-8 hover:bg-muted/50'
+                            size='icon'
+                          >
+                            <MoreHorizontalIcon className='h-4 w-4' />
+                            <span className='sr-only'>Open menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align='end'
+                          className='w-auto min-w-[120px]'
+                        >
+                          <DropdownMenuItem
+                            onClick={handleEditCampaign}
+                            className='flex items-center gap-0'
+                            disabled={!isManageAllowed}
+                          >
+                            <EditIcon className='mr-1 h-4 w-4' />
+                            Edit Campaign
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={handleDeleteClick}
+                            className='text-red-600 focus:text-red-600 flex items-center gap-0'
+                            disabled={!isManageAllowed}
+                          >
+                            <TrashIcon className='mr-1 h-4 w-4' />
+                            Delete Campaign
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
             </div>
-          </CardContent>
-        </Card>
+          </TableWrapper>
+        </div>
 
         {/* Report Data */}
         {campaign.daily_report_url ? (
@@ -664,14 +1006,13 @@ export default function CampaignDetailPage() {
                         mode='range'
                         selected={tempDateRange}
                         onSelect={(range) => {
-                          setTempDateRange(
-                            range as
-                              | {
-                                  from: Date | undefined;
-                                  to: Date | undefined;
-                                }
-                              | undefined
-                          );
+                          const newRange = range as
+                            | {
+                                from: Date | undefined;
+                                to: Date | undefined;
+                              }
+                            | undefined;
+                          setTempDateRange(newRange);
                         }}
                         numberOfMonths={2}
                         initialFocus
@@ -888,6 +1229,42 @@ export default function CampaignDetailPage() {
             </CardContent>
           </Card>
         )}
+
+        {/* Edit Campaign Form */}
+        {campaign && (
+          <EditCampaignForm
+            isOpen={showEditCampaignForm}
+            onClose={() => {
+              setShowEditCampaignForm(false);
+            }}
+            onUpdateCampaign={async (campaignId, campaignData) => {
+              await handleUpdateCampaign(campaignId, campaignData);
+            }}
+            campaign={campaign}
+            accountId={campaign.account_id}
+            games={allGames.filter(
+              (game) => game.account_id === campaign.account_id
+            )}
+          />
+        )}
+
+        {/* Delete Confirmation Dialog */}
+        <DeleteConfirmationDialog
+          isOpen={showDeleteDialog}
+          onClose={() => {
+            setShowDeleteDialog(false);
+          }}
+          onConfirm={handleDeleteCampaign}
+          title={isManageAllowed ? 'Are you sure?' : 'Cannot Delete Campaign'}
+          description={
+            isManageAllowed
+              ? `This action cannot be undone. This will permanently delete the campaign ${campaign?.name} from your account.`
+              : `You can only delete campaigns from accounts assigned to you. This campaign ${campaign?.name} is from an account assigned to another user.`
+          }
+          confirmLabel='Delete'
+          cancelLabel='Close'
+          isAllowed={isManageAllowed}
+        />
       </div>
     </AccessControl>
   );

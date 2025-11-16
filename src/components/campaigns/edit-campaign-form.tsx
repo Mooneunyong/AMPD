@@ -70,7 +70,7 @@ export function EditCampaignForm({
     name: '',
     description: null,
     region: 'KR',
-    mmp: 'Adjust',
+    mmp: 'adjust',
     campaign_type: 'CPI',
     start_date: '',
     end_date: '',
@@ -161,14 +161,9 @@ export function EditCampaignForm({
       return false;
     }
 
-    if (!editedCampaign.end_date) {
-      toast.error('Please select end date.');
-      return false;
-    }
-
     if (
-      new Date(editedCampaign.start_date) >
-      new Date(editedCampaign.end_date)
+      editedCampaign.end_date &&
+      new Date(editedCampaign.start_date) > new Date(editedCampaign.end_date)
     ) {
       toast.error('End date must be after start date.');
       return false;
@@ -192,7 +187,7 @@ export function EditCampaignForm({
         mmp: editedCampaign.mmp,
         campaign_type: editedCampaign.campaign_type,
         start_date: editedCampaign.start_date,
-        end_date: editedCampaign.end_date,
+        end_date: editedCampaign.end_date || null,
         status: editedCampaign.status,
         jira_url: editedCampaign.jira_url?.trim() || null,
         daily_report_url: editedCampaign.daily_report_url?.trim() || null,
@@ -276,7 +271,9 @@ export function EditCampaignForm({
                       const platformLabel =
                         PLATFORM_OPTIONS.find(
                           (opt) => opt.value === selectedGame?.platform
-                        )?.label || selectedGame?.platform || '';
+                        )?.label ||
+                        selectedGame?.platform ||
+                        '';
                       return (
                         <>
                           <span className='flex-1 text-left truncate'>
@@ -320,7 +317,9 @@ export function EditCampaignForm({
                         const platformLabel =
                           PLATFORM_OPTIONS.find(
                             (opt) => opt.value === game.platform
-                          )?.label || game.platform || '';
+                          )?.label ||
+                          game.platform ||
+                          '';
                         return (
                           <span className='text-xs text-muted-foreground flex-shrink-0 ml-auto'>
                             {platformLabel}
@@ -422,8 +421,9 @@ export function EditCampaignForm({
                       </div>
                     )}
                     <span className='flex-1 text-left'>
-                      {MMP_OPTIONS.find((opt) => opt.value === editedCampaign.mmp)
-                        ?.label || 'Select MMP'}
+                      {MMP_OPTIONS.find(
+                        (opt) => opt.value === editedCampaign.mmp
+                      )?.label || 'Select MMP'}
                     </span>
                   </div>
                 </SelectTrigger>
@@ -506,12 +506,12 @@ export function EditCampaignForm({
                       editedCampaign.status === 'planning'
                         ? 'text-yellow-600 dark:text-yellow-500'
                         : editedCampaign.status === 'ongoing'
-                          ? 'text-green-600 dark:text-green-500'
-                          : editedCampaign.status === 'holding'
-                            ? 'text-red-600 dark:text-red-500'
-                            : editedCampaign.status === 'end'
-                              ? 'text-gray-500 dark:text-gray-400'
-                              : ''
+                        ? 'text-green-600 dark:text-green-500'
+                        : editedCampaign.status === 'holding'
+                        ? 'text-red-600 dark:text-red-500'
+                        : editedCampaign.status === 'end'
+                        ? 'text-gray-500 dark:text-gray-400'
+                        : ''
                     }
                   >
                     {CAMPAIGN_STATUS_OPTIONS.find(
@@ -566,9 +566,10 @@ export function EditCampaignForm({
                         ? (() => {
                             const date = new Date(editedCampaign.start_date);
                             const year = date.getFullYear();
-                            const month = String(
-                              date.getMonth() + 1
-                            ).padStart(2, '0');
+                            const month = String(date.getMonth() + 1).padStart(
+                              2,
+                              '0'
+                            );
                             const day = String(date.getDate()).padStart(2, '0');
                             return `${year}/${month}/${day}`;
                           })()
@@ -613,9 +614,7 @@ export function EditCampaignForm({
             </div>
 
             <div className='space-y-2'>
-              <Label htmlFor='edit-end-date'>
-                End Date <span className='text-red-500'>*</span>
-              </Label>
+              <Label htmlFor='edit-end-date'>End Date</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -628,9 +627,10 @@ export function EditCampaignForm({
                         ? (() => {
                             const date = new Date(editedCampaign.end_date);
                             const year = date.getFullYear();
-                            const month = String(
-                              date.getMonth() + 1
-                            ).padStart(2, '0');
+                            const month = String(date.getMonth() + 1).padStart(
+                              2,
+                              '0'
+                            );
                             const day = String(date.getDate()).padStart(2, '0');
                             return `${year}/${month}/${day}`;
                           })()
@@ -749,4 +749,3 @@ export function EditCampaignForm({
     </Dialog>
   );
 }
-
