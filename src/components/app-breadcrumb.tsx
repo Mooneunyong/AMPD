@@ -1,6 +1,7 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   Breadcrumb,
@@ -10,6 +11,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
+import { getCampaignById } from '@/hooks/use-campaign-management';
 
 // 페이지 경로와 표시 이름 매핑
 const pathMap: Record<string, string> = {
@@ -24,9 +26,34 @@ const pathMap: Record<string, string> = {
 
 export function AppBreadcrumb() {
   const pathname = usePathname();
+  const [campaignName, setCampaignName] = useState<string | null>(null);
 
   // 경로를 분할하여 breadcrumb 항목 생성
   const pathSegments = pathname.split('/').filter(Boolean);
+
+  // /campaigns/[id] 경로인 경우 캠페인 이름 가져오기
+  useEffect(() => {
+    if (
+      pathSegments[0] === 'campaigns' &&
+      pathSegments.length === 2 &&
+      pathSegments[1] &&
+      pathSegments[1] !== 'all' &&
+      pathSegments[1] !== 'my'
+    ) {
+      const campaignId = pathSegments[1];
+      getCampaignById(campaignId)
+        .then((campaign) => {
+          if (campaign) {
+            setCampaignName(campaign.name);
+          }
+        })
+        .catch(() => {
+          // 에러 발생 시 무시
+        });
+    } else {
+      setCampaignName(null);
+    }
+  }, [pathname, pathSegments]);
 
   // 홈 페이지인 경우 breadcrumb 표시하지 않음
   if (pathname === '/') {
@@ -56,6 +83,14 @@ export function AppBreadcrumb() {
               isLast
             ) {
               displayName = 'Account Detail';
+            }
+            // /campaigns/[id] 경로인 경우
+            else if (
+              pathSegments[0] === 'campaigns' &&
+              pathSegments.length === 2 &&
+              isLast
+            ) {
+              displayName = campaignName || segment;
             } else {
               displayName = segment.charAt(0).toUpperCase() + segment.slice(1);
             }

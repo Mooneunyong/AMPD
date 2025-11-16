@@ -1,44 +1,15 @@
 /**
  * 공통 컴포넌트 메인 파일
- * 모든 공통 컴포넌트를 중앙에서 관리하고 재export
+ * 실제로 사용되는 컴포넌트만 export
  */
 
-// 로딩 관련 컴포넌트
-export {
-  LoadingSpinner,
-  LoadingOverlay,
-  PageLoading,
-  ErrorState,
-  EmptyState,
-} from './loading';
+// 로딩 관련 컴포넌트 (실제 사용 중)
+export { PageLoading } from './loading';
 
-// 폼 관련 컴포넌트
-export {
-  FormField,
-  SearchInput,
-  SubmitButton,
-  FormGroup,
-  FormSection,
-} from './forms';
+// 테이블 관련 컴포넌트 (실제 사용 중)
+export { TableWrapper, TABLE_STYLES } from './table-wrapper';
 
-// 레이아웃 관련 컴포넌트
-export {
-  PageHeader,
-  Section,
-  CardContainer,
-  Grid,
-  Stack,
-  Container,
-} from './layout';
-
-// 테이블 관련 컴포넌트
-export {
-  TableWrapper,
-  BaseTable,
-  TABLE_STYLES,
-} from './table-wrapper';
-
-// 다이얼로그 관련 컴포넌트
+// 다이얼로그 관련 컴포넌트 (실제 사용 중)
 export { DeleteConfirmationDialog } from './delete-confirmation-dialog';
 
 // 기존 컴포넌트들 (호환성을 위해 유지)

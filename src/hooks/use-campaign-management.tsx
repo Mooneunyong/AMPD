@@ -60,61 +60,138 @@ export const CAMPAIGN_STATUS_OPTIONS = [
 
 // 캠페인 타입 옵션
 export const CAMPAIGN_TYPE_OPTIONS = [
-  { value: 'CPI', label: 'CPI' },
-  { value: 'CPA', label: 'CPA' },
-  { value: 'CPE', label: 'CPE' },
-  { value: 'CPI+CPE', label: 'CPI+CPE' },
+  { value: 'ua', label: 'UA' },
+  { value: 'retention', label: 'Retention' },
+  { value: 'reengagement', label: 'Re-engagement' },
 ];
 
 // MMP 옵션
 export const MMP_OPTIONS = [
-  { value: 'Adjust', label: 'Adjust' },
-  { value: 'AppsFlyer', label: 'AppsFlyer' },
+  { value: 'appsflyer', label: 'AppsFlyer' },
+  { value: 'adjust', label: 'Adjust' },
+  { value: 'singular', label: 'Singular' },
+  { value: 'branch', label: 'Branch' },
+  { value: 'kochava', label: 'Kochava' },
 ];
 
-// 캠페인 지역 옵션
+// 지역 옵션
 export const REGION_OPTIONS = [
   { value: 'KR', label: 'Korea' },
-  { value: 'JP', label: 'Japan' },
-  { value: 'TW', label: 'Taiwan' },
   { value: 'US', label: 'United States' },
+  { value: 'JP', label: 'Japan' },
+  { value: 'CN', label: 'China' },
+  { value: 'GB', label: 'United Kingdom' },
+  { value: 'DE', label: 'Germany' },
+  { value: 'FR', label: 'France' },
+  { value: 'IT', label: 'Italy' },
+  { value: 'ES', label: 'Spain' },
+  { value: 'CA', label: 'Canada' },
+  { value: 'AU', label: 'Australia' },
+  { value: 'BR', label: 'Brazil' },
+  { value: 'MX', label: 'Mexico' },
+  { value: 'IN', label: 'India' },
+  { value: 'SG', label: 'Singapore' },
+  { value: 'TW', label: 'Taiwan' },
+  { value: 'HK', label: 'Hong Kong' },
+  { value: 'TH', label: 'Thailand' },
+  { value: 'VN', label: 'Vietnam' },
+  { value: 'ID', label: 'Indonesia' },
+  { value: 'PH', label: 'Philippines' },
+  { value: 'MY', label: 'Malaysia' },
 ];
 
-// 특정 게임의 캠페인 조회
-export async function getCampaignsByGame(gameId: string): Promise<Campaign[]> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from('campaigns')
-    .select(
-      `
-      *,
-      games(
-        id,
-        game_name,
-        account_id,
-        accounts(
+// 단일 캠페인 조회
+export async function getCampaignById(
+  campaignId: string
+): Promise<Campaign | null> {
+  try {
+    const supabase = createClient();
+
+    if (!campaignId) {
+      console.error('캠페인 ID가 없습니다');
+      return null;
+    }
+
+    const { data, error } = await supabase
+      .from('campaigns')
+      .select(
+        `
+        *,
+        games(
           id,
-          company
+          game_name,
+          store_url,
+          package_identifier,
+          account_id,
+          accounts(
+            id,
+            company,
+            assigned_user_id,
+            user_profiles!assigned_user_id(
+              display_name,
+              avatar_url
+            )
+          )
         )
+      `
       )
-    `
-    )
-    .eq('game_id', gameId)
-    .order('created_at', { ascending: false });
+      .eq('id', campaignId)
+      .single();
 
-  if (error) {
-    console.error('게임별 캠페인 조회 오류:', error);
-    throw new Error('캠페인을 불러올 수 없습니다.');
+    if (error) {
+      // 에러 객체를 any로 캐스팅하여 속성 접근
+      const errorAny = error as any;
+
+      // 에러 정보 추출
+      const errorMessage =
+        errorAny.message ||
+        errorAny.details ||
+        errorAny.hint ||
+        errorAny.code ||
+        '알 수 없는 오류';
+
+      console.error('캠페인 조회 오류 발생');
+      console.error('캠페인 ID:', campaignId);
+      console.error('에러 메시지:', errorMessage);
+      console.error('에러 코드:', errorAny.code);
+      console.error('에러 상세:', errorAny.details);
+      console.error('에러 힌트:', errorAny.hint);
+      console.error('전체 에러 객체:', error);
+      console.error('에러 객체 타입:', typeof error);
+      console.error('에러 객체 키:', Object.keys(error || {}));
+
+      return null;
+    }
+
+    if (!data) {
+      console.error('캠페인 데이터가 없습니다. 캠페인 ID:', campaignId);
+      return null;
+    }
+
+    return {
+      ...data,
+      game_name: (data.games as any)?.game_name || null,
+      game_store_url: (data.games as any)?.store_url || null,
+      game_package_identifier: (data.games as any)?.package_identifier || null,
+      account_company: (data.games as any)?.accounts?.company || null,
+      assigned_user_id: (data.games as any)?.accounts?.assigned_user_id || null,
+      assigned_user_name:
+        (data.games as any)?.accounts?.user_profiles?.display_name || null,
+      assigned_user_avatar_url:
+        (data.games as any)?.accounts?.user_profiles?.avatar_url || null,
+    };
+  } catch (err) {
+    console.error('getCampaignById 예외 발생:', err);
+    console.error('에러 타입:', typeof err);
+    console.error(
+      '에러 내용:',
+      err instanceof Error ? err.message : String(err)
+    );
+    return null;
   }
-
-  return data.map((campaign: any) => ({
-    ...campaign,
-    game_name: campaign.games?.game_name || null,
-    account_company: campaign.games?.accounts?.company || null,
-  }));
 }
 
-// 특정 계정의 모든 캠페인 조회
+// 계정별 캠페인 조회
 export async function getCampaignsByAccount(
   accountId: string
 ): Promise<Campaign[]> {
@@ -132,12 +209,17 @@ export async function getCampaignsByAccount(
         account_id,
         accounts(
           id,
-          company
+          company,
+          assigned_user_id,
+          user_profiles!assigned_user_id(
+            display_name,
+            avatar_url
+          )
         )
       )
     `
     )
-    .eq('account_id', accountId)
+    .eq('games.account_id', accountId)
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -147,10 +229,16 @@ export async function getCampaignsByAccount(
 
   return data.map((campaign: any) => ({
     ...campaign,
+    account_id: campaign.games?.account_id || null,
     game_name: campaign.games?.game_name || null,
     game_store_url: campaign.games?.store_url || null,
     game_package_identifier: campaign.games?.package_identifier || null,
     account_company: campaign.games?.accounts?.company || null,
+    assigned_user_id: campaign.games?.accounts?.assigned_user_id || null,
+    assigned_user_name:
+      campaign.games?.accounts?.user_profiles?.display_name || null,
+    assigned_user_avatar_url:
+      campaign.games?.accounts?.user_profiles?.avatar_url || null,
   }));
 }
 
@@ -255,17 +343,7 @@ export async function getMyCampaigns(userId: string): Promise<Campaign[]> {
 export async function createCampaign(
   campaignData: CampaignFormData
 ): Promise<Campaign> {
-  // 현재 사용자 정보 가져오기
   const supabase = createClient();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (!session) {
-    throw new Error('로그인이 필요합니다.');
-  }
-
-  // Supabase는 undefined 필드는 무시하므로, nullable 처리
   const insertPayload: any = {
     ...campaignData,
     end_date: campaignData.end_date ?? undefined,
@@ -273,12 +351,7 @@ export async function createCampaign(
 
   const { data, error } = await supabase
     .from('campaigns')
-    .insert([
-      {
-        ...insertPayload,
-        created_by: session.user.id,
-      },
-    ])
+    .insert(insertPayload)
     .select(
       `
       *,
@@ -290,7 +363,12 @@ export async function createCampaign(
         account_id,
         accounts(
           id,
-          company
+          company,
+          assigned_user_id,
+          user_profiles!assigned_user_id(
+            display_name,
+            avatar_url
+          )
         )
       )
     `
@@ -299,24 +377,19 @@ export async function createCampaign(
 
   if (error) {
     console.error('캠페인 생성 오류:', error);
-    
-    // 더 자세한 에러 메시지 추출
-    let errorMessage = '캠페인을 생성할 수 없습니다.';
     const errorAny = error as any;
+    const errorMessage =
+      errorAny.message ||
+      errorAny.details ||
+      errorAny.hint ||
+      errorAny.code ||
+      '캠페인을 생성할 수 없습니다.';
+
+    // 중복 이름 오류 처리
     if (errorAny.code === '23505') {
-      errorMessage = '동일한 계정에 같은 이름의 캠페인이 이미 존재합니다.';
-    } else if (errorAny.message) {
-      errorMessage = error.message;
-    } else if (errorAny.details) {
-      errorMessage = errorAny.details;
-    } else if (errorAny.hint) {
-      errorMessage = errorAny.hint;
-    } else if (errorAny.code) {
-      errorMessage = `Error code: ${errorAny.code}`;
-    } else if (typeof error === 'object' && error !== null) {
-      errorMessage = JSON.stringify(error);
+      throw new Error('동일한 계정에 같은 이름의 캠페인이 이미 존재합니다.');
     }
-    
+
     throw new Error(errorMessage);
   }
 
@@ -326,6 +399,11 @@ export async function createCampaign(
     game_store_url: (data.games as any)?.store_url || null,
     game_package_identifier: (data.games as any)?.package_identifier || null,
     account_company: (data.games as any)?.accounts?.company || null,
+    assigned_user_id: (data.games as any)?.accounts?.assigned_user_id || null,
+    assigned_user_name:
+      (data.games as any)?.accounts?.user_profiles?.display_name || null,
+    assigned_user_avatar_url:
+      (data.games as any)?.accounts?.user_profiles?.avatar_url || null,
   };
 }
 

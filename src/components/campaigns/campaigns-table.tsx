@@ -49,6 +49,7 @@ import {
 } from '@/components/ui/tooltip';
 import { TableWrapper, TABLE_STYLES } from '@/components/common/table-wrapper';
 import { DeleteConfirmationDialog } from '@/components/common/delete-confirmation-dialog';
+import { GameThumbnailTooltip } from '@/components/common/game-thumbnail-tooltip';
 import Link from 'next/link';
 
 // 상수 정의
@@ -239,8 +240,7 @@ const MMPIcon = React.memo(({ mmp }: MMPIconProps) => {
               alt='AppsFlyer'
               width={20}
               height={20}
-              className='object-contain'
-              style={{ width: 'auto', height: 'auto' }}
+              className='object-contain w-auto h-auto'
               unoptimized
             />
           </div>
@@ -315,21 +315,23 @@ interface DailyReportUrlCellProps {
   dailyReportUrl: string | null;
 }
 
-const DailyReportUrlCell = React.memo(({ dailyReportUrl }: DailyReportUrlCellProps) => {
-  if (dailyReportUrl) {
-    return (
-      <a
-        href={dailyReportUrl}
-        target='_blank'
-        rel='noopener noreferrer'
-        className='inline-flex items-center justify-center text-primary hover:underline'
-      >
-        <ExternalLinkIcon className='h-4 w-4' />
-      </a>
-    );
+const DailyReportUrlCell = React.memo(
+  ({ dailyReportUrl }: DailyReportUrlCellProps) => {
+    if (dailyReportUrl) {
+      return (
+        <a
+          href={dailyReportUrl}
+          target='_blank'
+          rel='noopener noreferrer'
+          className='inline-flex items-center justify-center text-primary hover:underline'
+        >
+          <ExternalLinkIcon className='h-4 w-4' />
+        </a>
+      );
+    }
+    return <span className='text-sm text-muted-foreground'>-</span>;
   }
-  return <span className='text-sm text-muted-foreground'>-</span>;
-});
+);
 DailyReportUrlCell.displayName = 'DailyReportUrlCell';
 
 // Campaign Table Row
@@ -357,10 +359,7 @@ function CampaignTableRow({
     accountAssignedUserId !== undefined
       ? accountAssignedUserId
       : campaign.assigned_user_id || '';
-  const isManageAllowed = canManageResource(
-    currentUserProfile,
-    assignedUserId
-  );
+  const isManageAllowed = canManageResource(currentUserProfile, assignedUserId);
   const [copiedGameName, setCopiedGameName] = useState(false);
 
   // 지역별 URL 생성
@@ -421,7 +420,12 @@ function CampaignTableRow({
     <TableRow>
       {columnVisibility.campaignTitle && (
         <TableCell style={{ width: COLUMN_WIDTHS.campaignTitle }}>
-          <div className='font-medium truncate text-sm'>{campaign.name}</div>
+          <Link
+            href={`/campaigns/${campaign.id}`}
+            className='font-medium truncate text-sm text-primary hover:underline block'
+          >
+            {campaign.name}
+          </Link>
         </TableCell>
       )}
       {columnVisibility.account && (
@@ -442,97 +446,37 @@ function CampaignTableRow({
         <TableCell style={{ width: COLUMN_WIDTHS.gameName }}>
           <div className='flex items-center gap-2'>
             {regionalUrl ? (
-              <>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <a
-                      href={regionalUrl}
-                      target='_blank'
-                      rel='noopener noreferrer'
-                      className='flex items-center gap-2 flex-1 min-w-0'
-                    >
-                      <GameImageCell
-                        imageUrl={imageUrl}
-                        imageLoading={imageLoading}
-                        alt={campaign.game_name || 'Game'}
-                      />
-                      <GameNameCell
-                        campaign={campaign}
-                        regionalUrl={regionalUrl}
-                        regionalGameName={regionalGameName}
-                        gameNameLoading={gameNameLoading}
-                      />
-                    </a>
-                  </TooltipTrigger>
-                  {imageUrl && (
-                    <TooltipContent
-                      side='bottom'
-                      align='center'
-                      className='p-3 max-w-none'
-                    >
-                      <div className='flex flex-col gap-2 w-[256px] items-start'>
-                        <a
-                          href={regionalUrl}
-                          target='_blank'
-                          rel='noopener noreferrer'
-                          className='w-full'
-                        >
-                          <Image
-                            src={imageUrl}
-                            alt={campaign.game_name || 'Game'}
-                            width={256}
-                            height={128}
-                            className='w-full h-32 object-cover rounded-md'
-                            unoptimized
-                          />
-                        </a>
-                        <div className='flex flex-col gap-1.5 w-full'>
-                          <div className='flex items-center gap-1.5 justify-start w-full'>
-                            {storeFaviconUrl && (
-                              <Image
-                                src={storeFaviconUrl}
-                                alt='Store'
-                                width={16}
-                                height={16}
-                                className='w-4 h-4 flex-shrink-0'
-                                unoptimized
-                              />
-                            )}
-                            <span className='text-sm font-medium text-left truncate flex-1 min-w-0'>
-                              {gameNameLoading
-                                ? '...'
-                                : regionalGameName ||
-                                  campaign.game_name ||
-                                  'Game'}
-                            </span>
-                          </div>
-                          {campaign.game_package_identifier && (
-                            <div className='text-xs text-muted-foreground text-left truncate w-full'>
-                              {campaign.game_package_identifier}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </TooltipContent>
-                  )}
-                </Tooltip>
-                {!gameNameLoading &&
-                  !!(regionalGameName || campaign.game_name) && (
-                    <Button
-                      type='button'
-                      variant='ghost'
-                      size='sm'
-                      className='h-5 w-5 p-0 flex-shrink-0'
-                      onClick={handleCopyGameName}
-                    >
-                      {copiedGameName ? (
-                        <Check className='h-3 w-3 text-green-600' />
-                      ) : (
-                        <Copy className='h-3 w-3 text-muted-foreground' />
-                      )}
-                    </Button>
-                  )}
-              </>
+              <GameThumbnailTooltip
+                imageUrl={imageUrl}
+                gameName={
+                  gameNameLoading
+                    ? null
+                    : regionalGameName || campaign.game_name || null
+                }
+                packageIdentifier={campaign.game_package_identifier || null}
+                storeUrl={regionalUrl}
+                storeFaviconUrl={storeFaviconUrl || null}
+                enableCopy={true}
+              >
+                <a
+                  href={regionalUrl}
+                  target='_blank'
+                  rel='noopener noreferrer'
+                  className='flex items-center gap-2 flex-1 min-w-0'
+                >
+                  <GameImageCell
+                    imageUrl={imageUrl}
+                    imageLoading={imageLoading}
+                    alt={campaign.game_name || 'Game'}
+                  />
+                  <GameNameCell
+                    campaign={campaign}
+                    regionalUrl={regionalUrl}
+                    regionalGameName={regionalGameName}
+                    gameNameLoading={gameNameLoading}
+                  />
+                </a>
+              </GameThumbnailTooltip>
             ) : (
               <div className='flex items-center gap-2 flex-1 min-w-0'>
                 <GameImageCell
@@ -580,9 +524,7 @@ function CampaignTableRow({
                     />
                   ) : null}
                   <AvatarFallback className='text-xs'>
-                    {campaign.assigned_user_name
-                      .charAt(0)
-                      .toUpperCase()}
+                    {campaign.assigned_user_name.charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
                 <div className='text-xs font-medium truncate'>
@@ -596,7 +538,10 @@ function CampaignTableRow({
         </TableCell>
       )}
       {columnVisibility.region && (
-        <TableCell style={{ width: COLUMN_WIDTHS.region }} className='text-center'>
+        <TableCell
+          style={{ width: COLUMN_WIDTHS.region }}
+          className='text-center'
+        >
           <div className='text-sm text-muted-foreground'>
             {getRegionDisplay(campaign.region)}
           </div>
@@ -809,7 +754,10 @@ export function CampaignsTable({
                   </TableHead>
                 )}
                 {columnVisibility.region && (
-                  <TableHead style={{ width: COLUMN_WIDTHS.region }} className='text-center'>
+                  <TableHead
+                    style={{ width: COLUMN_WIDTHS.region }}
+                    className='text-center'
+                  >
                     Region
                   </TableHead>
                 )}
@@ -822,7 +770,9 @@ export function CampaignsTable({
                   </TableHead>
                 )}
                 {columnVisibility.type && (
-                  <TableHead style={{ width: COLUMN_WIDTHS.type }}>Type</TableHead>
+                  <TableHead style={{ width: COLUMN_WIDTHS.type }}>
+                    Type
+                  </TableHead>
                 )}
                 {columnVisibility.dateRange && (
                   <TableHead style={{ width: COLUMN_WIDTHS.dateRange }}>
