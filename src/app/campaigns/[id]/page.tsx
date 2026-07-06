@@ -1157,7 +1157,7 @@ export default function CampaignDetailPage() {
   return (
     <AccessControl>
       <div
-        className='flex flex-col gap-3 w-full overflow-x-hidden'
+        className='flex flex-col gap-4 w-full overflow-x-hidden'
         style={{ height: 'calc(100vh - 96px)' }}
       >
         {/* Campaign Information — 상단 고정 (스크롤 안 됨) */}
@@ -1553,7 +1553,7 @@ export default function CampaignDetailPage() {
           <Tabs
             value={activeTab}
             onValueChange={setActiveTab}
-            className='flex flex-1 flex-col min-h-0 min-w-0 gap-3'
+            className='flex flex-1 flex-col min-h-0 min-w-0 gap-4'
           >
             <div className='flex-shrink-0 flex items-center justify-between gap-2 flex-wrap'>
               <TabsList className='rounded-xl h-9'>
