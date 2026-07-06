@@ -44,7 +44,9 @@ const TabsContent = React.forwardRef<
   <TabsPrimitive.Content
     ref={ref}
     className={cn(
-      "mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+      // NOTE: shadcn 기본값의 mt-2 를 제거함 — 탭↔콘텐츠 간격은 각 사용처에서
+      // gap/space-y 로 명시 관리 (숨은 기본 마진이 이중 간격을 만들던 문제 방지)
+      "ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
       className
     )}
     {...props}

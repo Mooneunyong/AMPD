@@ -1684,7 +1684,7 @@ export default function CampaignDetailPage() {
             {/* Charts */}
             <TabsContent
               value='charts'
-              className='mt-0 flex-1 min-h-0 overflow-y-auto data-[state=active]:flex flex-col gap-4'
+              className='flex-1 min-h-0 overflow-y-auto data-[state=active]:flex flex-col gap-4'
             >
               {dataLoading ? (
                 <div className='space-y-4'>
@@ -2030,12 +2030,12 @@ export default function CampaignDetailPage() {
             </TabsContent>
 
             {/* Monthly Summary (전체 데이터 기준) */}
-            <TabsContent value='monthly' className='mt-0 flex-1 min-h-0 min-w-0'>
+            <TabsContent value='monthly' className='flex-1 min-h-0 min-w-0'>
               <MonthlySummaryTable rows={monthlySummary ?? []} />
             </TabsContent>
 
             {/* Daily Report Data */}
-            <TabsContent value='daily' className='mt-0 flex-1 min-h-0 min-w-0'>
+            <TabsContent value='daily' className='flex-1 min-h-0 min-w-0'>
               <DailyReportTable
                 loading={dataLoading}
                 error={dataError}
