@@ -163,6 +163,14 @@ export function DailyReportTable({
       .catch(() => toast.error('복사 실패'));
   }, [bounds, data, headers]);
 
+  // 단일 집계값 복사 (개수/합계/평균/최소/최대 클릭 시)
+  const copyValue = useCallback((label: string, text: string) => {
+    navigator.clipboard
+      .writeText(text)
+      .then(() => toast.success(`${label} 복사 · ${text}`))
+      .catch(() => toast.error('복사 실패'));
+  }, []);
+
   // 선택 집계
   const stats = useMemo(() => {
     if (!bounds) return null;
@@ -513,36 +521,26 @@ export function DailyReportTable({
               {stats.count > 0 ? (
                 <>
                   <span className='h-3.5 w-px flex-shrink-0 bg-background/25' />
-                  <span className='whitespace-nowrap text-background/60'>
-                    개수{' '}
-                    <b className='text-background tabular-nums'>
-                      {stats.count}
-                    </b>
-                  </span>
-                  <span className='whitespace-nowrap text-background/60'>
-                    합계{' '}
-                    <b className='text-background tabular-nums'>
-                      {fmt(stats.sum, stats.f)}
-                    </b>
-                  </span>
-                  <span className='whitespace-nowrap text-background/60'>
-                    평균{' '}
-                    <b className='text-background tabular-nums'>
-                      {fmt(stats.avg, stats.f)}
-                    </b>
-                  </span>
-                  <span className='whitespace-nowrap text-background/60'>
-                    최소{' '}
-                    <b className='text-background tabular-nums'>
-                      {fmt(stats.min, stats.f)}
-                    </b>
-                  </span>
-                  <span className='whitespace-nowrap text-background/60'>
-                    최대{' '}
-                    <b className='text-background tabular-nums'>
-                      {fmt(stats.max, stats.f)}
-                    </b>
-                  </span>
+                  {(
+                    [
+                      ['개수', String(stats.count)],
+                      ['합계', fmt(stats.sum, stats.f)],
+                      ['평균', fmt(stats.avg, stats.f)],
+                      ['최소', fmt(stats.min, stats.f)],
+                      ['최대', fmt(stats.max, stats.f)],
+                    ] as const
+                  ).map(([label, value]) => (
+                    <button
+                      key={label}
+                      type='button'
+                      onClick={() => copyValue(label, value)}
+                      className='inline-flex flex-shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-1.5 py-0.5 text-background/60 transition-colors hover:bg-background/15 hover:text-background'
+                      title={`클릭하여 ${label} 복사 · ${value}`}
+                    >
+                      {label}{' '}
+                      <b className='text-background tabular-nums'>{value}</b>
+                    </button>
+                  ))}
                 </>
               ) : (
                 <span className='whitespace-nowrap text-background/60'>
