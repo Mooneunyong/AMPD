@@ -274,7 +274,7 @@ export default function EmailTemplatesPage() {
                   isDefault ? 'border-primary/50 ring-1 ring-primary/30' : ''
                 }`}
               >
-                <CardHeader className='pb-3'>
+                <CardHeader className='p-4 pb-2'>
                   <div className='flex items-start justify-between gap-2'>
                     <div className='flex-1 min-w-0'>
                       <CardTitle className='text-base flex items-center gap-2 flex-wrap'>
@@ -349,7 +349,7 @@ export default function EmailTemplatesPage() {
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className='pt-0 flex-1'>
+                <CardContent className='px-4 pb-4 pt-0 flex-1'>
                   <pre className='text-xs whitespace-pre-wrap font-sans text-muted-foreground line-clamp-5'>
                     {t.body}
                   </pre>
