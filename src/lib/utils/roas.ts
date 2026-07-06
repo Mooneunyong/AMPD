@@ -25,7 +25,7 @@ export const roasBgStyle = (
   const num = parseRoasPercent(val);
   if (num === null) return undefined;
   const style: React.CSSProperties = {
-    color: 'rgb(21, 128, 61)', // Tailwind green-700 (진한 초록)
+    color: 'rgb(20, 83, 45)', // Tailwind green-900 (아주 진한 초록)
     fontWeight: 600,
   };
   if (num > 0) {
