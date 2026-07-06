@@ -259,16 +259,20 @@ export function DailyReportTable({
   const dateHeader = headers.find(isDateHeader);
 
   // 선택 셀 오버레이 스타일 (배경/아웃라인 — 기존 배경 위에 겹침)
+  // 선택 영역 전체를 하나의 테두리로: 가장자리 셀에만 해당 방향 선을 그림
   const selOverlay = (
     r: number,
     c: number
   ): React.CSSProperties | undefined => {
-    if (!inSel(r, c)) return undefined;
-    return {
-      boxShadow: 'inset 0 0 0 9999px rgba(37, 99, 235, 0.12)',
-      outline: '1px solid rgba(37, 99, 235, 0.55)',
-      outlineOffset: '-1px',
-    };
+    if (!bounds || !inSel(r, c)) return undefined;
+    const line = 'rgba(37, 99, 235, 0.85)';
+    const shadows: string[] = [];
+    if (r === bounds.r0) shadows.push(`inset 0 2px 0 0 ${line}`); // 상단
+    if (r === bounds.r1) shadows.push(`inset 0 -2px 0 0 ${line}`); // 하단
+    if (c === bounds.c0) shadows.push(`inset 2px 0 0 0 ${line}`); // 좌측
+    if (c === bounds.c1) shadows.push(`inset -2px 0 0 0 ${line}`); // 우측
+    shadows.push('inset 0 0 0 9999px rgba(37, 99, 235, 0.10)'); // 내부 채움
+    return { boxShadow: shadows.join(', ') };
   };
 
   return (
