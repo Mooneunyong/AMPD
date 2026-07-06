@@ -1553,9 +1553,9 @@ export default function CampaignDetailPage() {
           <Tabs
             value={activeTab}
             onValueChange={setActiveTab}
-            className='flex flex-1 flex-col min-h-0 min-w-0 mt-4'
+            className='flex flex-1 flex-col min-h-0 min-w-0 mt-3'
           >
-            <div className='flex-shrink-0 flex items-center justify-between mb-4 gap-2 flex-wrap'>
+            <div className='flex-shrink-0 flex items-center justify-between mb-3 gap-2 flex-wrap'>
               <TabsList className='rounded-xl h-9'>
                 <TabsTrigger
                   value='daily'
