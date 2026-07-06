@@ -195,7 +195,7 @@ export function CreateCampaignForm({
             취소
           </Button>
           <Button type='button' onClick={handleSubmit} disabled={isSubmitting}>
-            {isSubmitting && <Loader2 className='mr-2 h-4 w-4 animate-spin' />}
+            {isSubmitting && <Loader2 className='h-4 w-4 animate-spin' />}
             캠페인 생성
           </Button>
         </DialogFooter>

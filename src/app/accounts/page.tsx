@@ -343,7 +343,7 @@ export default function AccountManagementPage() {
                 onClick={() => setShowCreateForm(true)}
                 size='sm'
               >
-                <PlusIcon className='mr-2 h-4 w-4' />
+                <PlusIcon className='h-4 w-4' />
                 Create Account
               </Button>
             </div>
