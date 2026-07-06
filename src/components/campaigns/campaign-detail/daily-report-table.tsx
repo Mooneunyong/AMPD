@@ -385,6 +385,8 @@ export function DailyReportTable({
                     {header}
                   </TableHead>
                 ))}
+                {/* 스페이서: 남는 가로 공간을 흡수해 실제 열이 늘어나지 않게 함 */}
+                <TableHead aria-hidden className='w-full p-0' />
               </TableRow>
             </TableHeader>
             <TableBody className={TABLE_STYLES.body}>
@@ -496,6 +498,8 @@ export function DailyReportTable({
                         </TableCell>
                       );
                     })}
+                    {/* 스페이서 셀 (헤더 스페이서와 짝) */}
+                    <TableCell aria-hidden className='p-0' />
                   </TableRow>
                 );
               })}
