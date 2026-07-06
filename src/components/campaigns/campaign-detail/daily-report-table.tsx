@@ -55,12 +55,15 @@ const isSalesHeader = (h: string) =>
   h.toLowerCase().includes('sales');
 
 // "$ 1,234.56" / "45.31%" / "1,234" → 숫자. 파싱 불가면 null.
+// Number() 사용: 문자열 "전체"가 숫자여야 인정 (parseFloat 는 "2026-05-25"→2026
+// 처럼 앞부분만 파싱해 날짜를 숫자로 오인하므로 사용하지 않음).
 function parseNum(v: unknown): number | null {
   if (v === null || v === undefined) return null;
   const s = String(v).trim();
   if (!s || s === '-') return null;
   const cleaned = s.replace(/[$,\s%]/g, '');
-  const n = parseFloat(cleaned);
+  if (!cleaned) return null;
+  const n = Number(cleaned);
   return Number.isFinite(n) ? n : null;
 }
 
@@ -277,8 +280,8 @@ export function DailyReportTable({
 
   return (
     <TooltipProvider delayDuration={150}>
-      <div className='flex h-full min-h-0 flex-col'>
-        <TableWrapper fillHeight className='max-h-full flex-1'>
+      <div className='relative h-full min-h-0'>
+        <TableWrapper fillHeight className='max-h-full h-full'>
           <Table
             style={{ width: 'max-content', minWidth: '100%' }}
             className={dragging ? 'select-none' : ''}
@@ -414,41 +417,57 @@ export function DailyReportTable({
         </TableWrapper>
 
         {/* 선택 요약 바 (스프레드시트처럼) */}
+        {/* 선택 요약 — 테이블 위에 떠 있어 레이아웃을 밀지 않음 */}
         {bounds && stats && (
-          <div className='flex-shrink-0 flex items-center gap-x-4 gap-y-1 flex-wrap border-t bg-muted/40 px-3 py-1.5 text-xs'>
-            <span className='text-muted-foreground'>
-              {stats.cellCount}칸 선택
-            </span>
-            {stats.count > 0 ? (
-              <>
-                <span>
-                  개수 <b className='tabular-nums'>{stats.count}</b>
+          <div className='pointer-events-none absolute bottom-3 left-1/2 z-40 -translate-x-1/2'>
+            <div className='pointer-events-auto flex max-w-[calc(100vw-3rem)] items-center gap-3 overflow-x-auto rounded-xl border bg-background/95 px-3 py-1.5 text-xs shadow-lg backdrop-blur-sm'>
+              <span className='whitespace-nowrap text-muted-foreground'>
+                {stats.cellCount}칸 선택
+              </span>
+              {stats.count > 0 ? (
+                <>
+                  <span className='h-3.5 w-px flex-shrink-0 bg-border' />
+                  <span className='whitespace-nowrap text-muted-foreground'>
+                    개수{' '}
+                    <b className='text-foreground tabular-nums'>
+                      {stats.count}
+                    </b>
+                  </span>
+                  <span className='whitespace-nowrap text-muted-foreground'>
+                    합계{' '}
+                    <b className='text-foreground tabular-nums'>
+                      {fmt(stats.sum, stats.f)}
+                    </b>
+                  </span>
+                  <span className='whitespace-nowrap text-muted-foreground'>
+                    평균{' '}
+                    <b className='text-foreground tabular-nums'>
+                      {fmt(stats.avg, stats.f)}
+                    </b>
+                  </span>
+                  <span className='whitespace-nowrap text-muted-foreground'>
+                    최소{' '}
+                    <b className='text-foreground tabular-nums'>
+                      {fmt(stats.min, stats.f)}
+                    </b>
+                  </span>
+                  <span className='whitespace-nowrap text-muted-foreground'>
+                    최대{' '}
+                    <b className='text-foreground tabular-nums'>
+                      {fmt(stats.max, stats.f)}
+                    </b>
+                  </span>
+                </>
+              ) : (
+                <span className='whitespace-nowrap text-muted-foreground'>
+                  · 숫자 셀 없음
                 </span>
-                <span>
-                  합계{' '}
-                  <b className='tabular-nums'>{fmt(stats.sum, stats.f)}</b>
-                </span>
-                <span>
-                  평균{' '}
-                  <b className='tabular-nums'>{fmt(stats.avg, stats.f)}</b>
-                </span>
-                <span>
-                  최소{' '}
-                  <b className='tabular-nums'>{fmt(stats.min, stats.f)}</b>
-                </span>
-                <span>
-                  최대{' '}
-                  <b className='tabular-nums'>{fmt(stats.max, stats.f)}</b>
-                </span>
-              </>
-            ) : (
-              <span className='text-muted-foreground'>숫자 셀 없음</span>
-            )}
-            <div className='ml-auto flex items-center gap-1'>
+              )}
+              <span className='h-3.5 w-px flex-shrink-0 bg-border' />
               <button
                 type='button'
                 onClick={copySelection}
-                className='inline-flex items-center gap-1 rounded-md px-2 py-0.5 hover:bg-muted transition-colors'
+                className='inline-flex flex-shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground'
                 title='선택 영역 복사 (⌘C)'
               >
                 <Copy className='h-3 w-3' />
@@ -457,7 +476,7 @@ export function DailyReportTable({
               <button
                 type='button'
                 onClick={clearSel}
-                className='inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors'
+                className='inline-flex flex-shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground'
                 title='선택 해제 (Esc)'
               >
                 <X className='h-3 w-3' />
