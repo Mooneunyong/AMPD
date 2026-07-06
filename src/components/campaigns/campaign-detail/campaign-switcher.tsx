@@ -80,18 +80,32 @@ export function CampaignSwitcher({ currentCampaign }: CampaignSwitcherProps) {
         game_logo_url: c.game_logo_url ?? null,
         game_name: c.game_name ?? null,
       }));
-      // 정렬: status 우선순위 (ongoing > planning > holding > end) → 이름
-      const order: Record<string, number> = {
+      // 정렬: status 우선순위 → 게임명 → 지역 우선순위(KR→JP→TW→US...)
+      const statusOrder: Record<string, number> = {
         ongoing: 0,
         planning: 1,
         holding: 2,
         end: 3,
       };
+      const regionOrder: Record<string, number> = {
+        KR: 0,
+        JP: 1,
+        TW: 2,
+        US: 3,
+      };
+      // 이름에서 지역 접미사(_KR 등)를 뗀 게임 기준명
+      const baseName = (c: CampaignListItem) =>
+        c.region ? c.name.replace(new RegExp(`_${c.region}$`), '') : c.name;
       compact.sort((a, b) => {
-        const aOrd = order[a.status] ?? 99;
-        const bOrd = order[b.status] ?? 99;
-        if (aOrd !== bOrd) return aOrd - bOrd;
-        return a.name.localeCompare(b.name);
+        const aS = statusOrder[a.status] ?? 99;
+        const bS = statusOrder[b.status] ?? 99;
+        if (aS !== bS) return aS - bS;
+        const nameCmp = baseName(a).localeCompare(baseName(b));
+        if (nameCmp !== 0) return nameCmp;
+        const aR = regionOrder[a.region ?? ''] ?? 99;
+        const bR = regionOrder[b.region ?? ''] ?? 99;
+        if (aR !== bR) return aR - bR;
+        return (a.region ?? '').localeCompare(b.region ?? '');
       });
       setCampaigns(compact);
     } catch (e) {
