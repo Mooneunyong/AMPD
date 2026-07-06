@@ -231,7 +231,7 @@ export function DailyReportTable({
 
   // 선택 영역을 따라 요약 칩 위치 계산
   // - 세로: 선택 하단 바로 아래 (공간 부족 시 선택 위로 뒤집기)
-  // - 가로: 선택 영역 가로 중앙 정렬 (드래그 방향과 무관)
+  // - 가로: 선택 영역 왼쪽 끝에서 시작 (왼쪽 정렬)
   // - 컨테이너 밖으로 나가지 않도록 클램프
   const recomputeChip = useCallback(() => {
     const container = containerRef.current;
@@ -239,23 +239,19 @@ export function DailyReportTable({
       setChipPos(null);
       return;
     }
-    // 선택의 하단 좌/우 끝, 상단 좌 끝 셀
+    // 선택의 하단-좌, 상단-좌 끝 셀
     const blEl = container.querySelector<HTMLElement>(
       `[data-cell="${bounds.r1}-${bounds.c0}"]`
-    );
-    const brEl = container.querySelector<HTMLElement>(
-      `[data-cell="${bounds.r1}-${bounds.c1}"]`
     );
     const tlEl = container.querySelector<HTMLElement>(
       `[data-cell="${bounds.r0}-${bounds.c0}"]`
     );
-    if (!blEl || !brEl || !tlEl) {
+    if (!blEl || !tlEl) {
       setChipPos(null);
       return;
     }
     const cRect = container.getBoundingClientRect();
     const blRect = blEl.getBoundingClientRect();
-    const brRect = brEl.getBoundingClientRect();
     const tlRect = tlEl.getBoundingClientRect();
     const chipW = chipRef.current?.offsetWidth ?? 340;
     const chipH = chipRef.current?.offsetHeight ?? 34;
@@ -271,11 +267,8 @@ export function DailyReportTable({
     else top = cRect.height - chipH - pad; // 둘 다 안 되면 하단 고정
     top = Math.min(Math.max(pad, top), cRect.height - chipH - pad);
 
-    // 가로: 선택 영역 중앙에 칩 중앙을 맞춤
-    const selLeft = blRect.left - cRect.left;
-    const selRight = brRect.right - cRect.left;
-    const center = (selLeft + selRight) / 2;
-    let left = center - chipW / 2;
+    // 가로: 선택 영역 왼쪽 끝에 칩 왼쪽을 맞춤
+    let left = blRect.left - cRect.left;
     left = Math.min(Math.max(pad, left), cRect.width - chipW - pad);
     if (!Number.isFinite(left)) left = pad;
 
@@ -559,29 +552,41 @@ export function DailyReportTable({
                       ['최소', fmt(stats.min, stats.f)],
                       ['최대', fmt(stats.max, stats.f)],
                     ] as const
-                  ).map(([label, value]) => (
-                    <button
-                      key={label}
-                      type='button'
-                      onClick={() => copyValue(label, value)}
-                      className='inline-flex flex-shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-1.5 py-0.5 text-background/60 transition-colors hover:bg-background/15 hover:text-background'
-                      title={`클릭하여 ${label} 복사 · ${value}`}
-                    >
-                      {copiedKey === label ? (
-                        <span className='inline-flex items-center gap-1 text-emerald-400 duration-200 animate-in fade-in-0 zoom-in-95'>
-                          <Check className='h-3 w-3' />
-                          복사됨
-                        </span>
-                      ) : (
-                        <span className='inline-flex items-center gap-1 duration-200 animate-in fade-in-0'>
+                  ).map(([label, value]) => {
+                    const copied = copiedKey === label;
+                    return (
+                      <button
+                        key={label}
+                        type='button'
+                        onClick={() => copyValue(label, value)}
+                        className='group inline-grid flex-shrink-0 place-items-center rounded-md px-1.5 py-0.5 transition-colors hover:bg-background/15'
+                        title={`클릭하여 ${label} 복사 · ${value}`}
+                      >
+                        {/* 값과 "복사됨" 을 같은 grid 칸에 겹쳐 폭을 고정 */}
+                        <span
+                          style={{ gridArea: '1 / 1' }}
+                          className={`inline-flex items-center gap-1 whitespace-nowrap text-background/60 transition-all duration-200 group-hover:text-background ${
+                            copied ? 'scale-95 opacity-0' : 'scale-100 opacity-100'
+                          }`}
+                        >
                           {label}{' '}
                           <b className='text-background tabular-nums'>
                             {value}
                           </b>
                         </span>
-                      )}
-                    </button>
-                  ))}
+                        <span
+                          style={{ gridArea: '1 / 1' }}
+                          aria-hidden={!copied}
+                          className={`inline-flex items-center gap-1 whitespace-nowrap text-emerald-400 transition-all duration-200 ${
+                            copied ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
+                          }`}
+                        >
+                          <Check className='h-3 w-3' />
+                          복사됨
+                        </span>
+                      </button>
+                    );
+                  })}
                 </>
               ) : (
                 <span className='whitespace-nowrap text-background/60'>
@@ -592,20 +597,32 @@ export function DailyReportTable({
               <button
                 type='button'
                 onClick={copySelection}
-                className='inline-flex flex-shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-background/70 transition-colors hover:bg-background/15 hover:text-background'
+                className='inline-grid flex-shrink-0 place-items-center rounded-md px-1.5 py-0.5 text-background/70 transition-colors hover:bg-background/15 hover:text-background'
                 title='선택 영역 복사 (⌘C)'
               >
-                {copiedKey === '__range__' ? (
-                  <span className='inline-flex items-center gap-1 text-emerald-400 duration-200 animate-in fade-in-0 zoom-in-95'>
-                    <Check className='h-3 w-3' />
-                    복사됨
-                  </span>
-                ) : (
-                  <span className='inline-flex items-center gap-1'>
-                    <Copy className='h-3 w-3' />
-                    복사
-                  </span>
-                )}
+                <span
+                  style={{ gridArea: '1 / 1' }}
+                  className={`inline-flex items-center gap-1 whitespace-nowrap transition-all duration-200 ${
+                    copiedKey === '__range__'
+                      ? 'scale-95 opacity-0'
+                      : 'scale-100 opacity-100'
+                  }`}
+                >
+                  <Copy className='h-3 w-3' />
+                  복사
+                </span>
+                <span
+                  style={{ gridArea: '1 / 1' }}
+                  aria-hidden={copiedKey !== '__range__'}
+                  className={`inline-flex items-center gap-1 whitespace-nowrap text-emerald-400 transition-all duration-200 ${
+                    copiedKey === '__range__'
+                      ? 'scale-100 opacity-100'
+                      : 'scale-95 opacity-0'
+                  }`}
+                >
+                  <Check className='h-3 w-3' />
+                  복사됨
+                </span>
               </button>
               <button
                 type='button'
