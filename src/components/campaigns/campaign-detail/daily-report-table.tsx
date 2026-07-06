@@ -1,7 +1,14 @@
 'use client';
 
 import * as React from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { toast } from 'sonner';
 import { Copy, X } from 'lucide-react';
 import {
@@ -105,6 +112,14 @@ export function DailyReportTable({
   const [dragging, setDragging] = useState(false);
   const draggingRef = useRef(false);
 
+  // 플로팅 요약 칩 위치 (선택 영역을 따라감)
+  const containerRef = useRef<HTMLDivElement>(null);
+  const chipRef = useRef<HTMLDivElement>(null);
+  const [chipPos, setChipPos] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
+
   const bounds = useMemo(() => {
     if (!anchor || !focusCell) return null;
     return {
@@ -187,6 +202,69 @@ export function DailyReportTable({
       f,
     };
   }, [bounds, data, headers]);
+
+  // 선택 영역을 따라 요약 칩 위치 계산
+  // - 기본: 선택 하단(드래그 중인 열) 바로 아래
+  // - 아래 공간 부족 시 선택 위로 뒤집기
+  // - 컨테이너 밖으로 나가지 않도록 클램프
+  const recomputeChip = useCallback(() => {
+    const container = containerRef.current;
+    if (!container || !bounds || !focusCell) {
+      setChipPos(null);
+      return;
+    }
+    const col = focusCell.c;
+    const bottomEl = container.querySelector<HTMLElement>(
+      `[data-cell="${bounds.r1}-${col}"]`
+    );
+    const topEl = container.querySelector<HTMLElement>(
+      `[data-cell="${bounds.r0}-${col}"]`
+    );
+    if (!bottomEl || !topEl) {
+      setChipPos(null);
+      return;
+    }
+    const cRect = container.getBoundingClientRect();
+    const bRect = bottomEl.getBoundingClientRect();
+    const tRect = topEl.getBoundingClientRect();
+    const chipW = chipRef.current?.offsetWidth ?? 340;
+    const chipH = chipRef.current?.offsetHeight ?? 34;
+    const pad = 8;
+    const gap = 6;
+
+    // 세로: 선택 아래 → 넘치면 선택 위
+    const below = bRect.bottom - cRect.top + gap;
+    const above = tRect.top - cRect.top - chipH - gap;
+    let top: number;
+    if (below + chipH + pad <= cRect.height) top = below;
+    else if (above >= pad) top = above;
+    else top = cRect.height - chipH - pad; // 둘 다 안 되면 하단 고정
+    top = Math.min(Math.max(pad, top), cRect.height - chipH - pad);
+
+    // 가로: 드래그 열 위치에서 시작, 넘치면 클램프
+    let left = bRect.left - cRect.left;
+    left = Math.min(Math.max(pad, left), cRect.width - chipW - pad);
+    if (!Number.isFinite(left)) left = pad;
+
+    setChipPos({ top, left });
+  }, [bounds, focusCell]);
+
+  useLayoutEffect(() => {
+    recomputeChip();
+  }, [recomputeChip, data]);
+
+  // 스크롤/리사이즈 시 칩이 선택을 따라오도록 재계산
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const handler = () => recomputeChip();
+    container.addEventListener('scroll', handler, true); // 내부 스크롤(capture)
+    window.addEventListener('resize', handler);
+    return () => {
+      container.removeEventListener('scroll', handler, true);
+      window.removeEventListener('resize', handler);
+    };
+  }, [recomputeChip]);
 
   // 전역: 드래그 종료 + 단축키(Esc 해제, Cmd/Ctrl+C 복사)
   useEffect(() => {
@@ -280,7 +358,7 @@ export function DailyReportTable({
 
   return (
     <TooltipProvider delayDuration={150}>
-      <div className='relative h-full min-h-0'>
+      <div ref={containerRef} className='relative h-full min-h-0'>
         <TableWrapper fillHeight className='max-h-full h-full'>
           <Table
             style={{ width: 'max-content', minWidth: '100%' }}
@@ -338,6 +416,7 @@ export function DailyReportTable({
                           : undefined;
 
                       const handlers = {
+                        'data-cell': `${rowIndex}-${cellIndex}`,
                         onMouseDown: (e: React.MouseEvent) =>
                           onCellDown(rowIndex, cellIndex, e),
                         onMouseEnter: () => onCellEnter(rowIndex, cellIndex),
@@ -416,11 +495,18 @@ export function DailyReportTable({
           </Table>
         </TableWrapper>
 
-        {/* 선택 요약 바 (스프레드시트처럼) */}
-        {/* 선택 요약 — 테이블 위에 떠 있어 레이아웃을 밀지 않음 */}
-        {bounds && stats && (
-          <div className='pointer-events-none absolute bottom-3 left-1/2 z-40 -translate-x-1/2'>
-            <div className='pointer-events-auto flex max-w-[calc(100vw-3rem)] items-center gap-3 overflow-x-auto rounded-xl border bg-background/95 px-3 py-1.5 text-xs shadow-lg backdrop-blur-sm'>
+        {/* 선택 요약 — 선택 영역을 따라다니는 플로팅 칩 */}
+        {bounds && stats && chipPos && (
+          <div
+            className='pointer-events-none absolute z-40'
+            style={{ top: chipPos.top, left: chipPos.left }}
+          >
+            <div
+              ref={chipRef}
+              className={`flex max-w-[calc(100vw-3rem)] items-center gap-3 overflow-x-auto rounded-xl border bg-background/95 px-3 py-1.5 text-xs shadow-lg backdrop-blur-sm ${
+                dragging ? 'pointer-events-none' : 'pointer-events-auto'
+              }`}
+            >
               <span className='whitespace-nowrap text-muted-foreground'>
                 {stats.cellCount}칸 선택
               </span>
