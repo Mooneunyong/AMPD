@@ -318,7 +318,7 @@ export function DailyReportTable({
                     {headers.map((header, cellIndex) => {
                       const cellValue = row[header];
                       const isDateCol = isDateHeader(header);
-                      let cellClassName = 'whitespace-nowrap cursor-cell';
+                      let cellClassName = 'whitespace-nowrap';
                       if (isDateCol) {
                         cellClassName +=
                           ' sticky left-0 z-10 bg-muted font-medium';
