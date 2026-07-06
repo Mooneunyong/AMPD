@@ -10,7 +10,7 @@ import {
   useState,
 } from 'react';
 import { toast } from 'sonner';
-import { Copy, X } from 'lucide-react';
+import { Check, Copy, X } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -120,6 +120,21 @@ export function DailyReportTable({
     left: number;
   } | null>(null);
 
+  // 복사 피드백: 방금 복사한 버튼 키 (label 또는 '__range__')
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flashCopied = useCallback((key: string) => {
+    setCopiedKey(key);
+    if (copiedTimer.current) clearTimeout(copiedTimer.current);
+    copiedTimer.current = setTimeout(() => setCopiedKey(null), 1100);
+  }, []);
+  useEffect(
+    () => () => {
+      if (copiedTimer.current) clearTimeout(copiedTimer.current);
+    },
+    []
+  );
+
   const bounds = useMemo(() => {
     if (!anchor || !focusCell) return null;
     return {
@@ -159,17 +174,20 @@ export function DailyReportTable({
     }
     navigator.clipboard
       .writeText(lines.join('\n'))
-      .then(() => toast.success('선택 영역을 복사했습니다'))
+      .then(() => flashCopied('__range__'))
       .catch(() => toast.error('복사 실패'));
-  }, [bounds, data, headers]);
+  }, [bounds, data, headers, flashCopied]);
 
   // 단일 집계값 복사 (개수/합계/평균/최소/최대 클릭 시)
-  const copyValue = useCallback((label: string, text: string) => {
-    navigator.clipboard
-      .writeText(text)
-      .then(() => toast.success(`${label} 복사 · ${text}`))
-      .catch(() => toast.error('복사 실패'));
-  }, []);
+  const copyValue = useCallback(
+    (label: string, text: string) => {
+      navigator.clipboard
+        .writeText(text)
+        .then(() => flashCopied(label))
+        .catch(() => toast.error('복사 실패'));
+    },
+    [flashCopied]
+  );
 
   // 선택 집계
   const stats = useMemo(() => {
@@ -541,8 +559,19 @@ export function DailyReportTable({
                       className='inline-flex flex-shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-1.5 py-0.5 text-background/60 transition-colors hover:bg-background/15 hover:text-background'
                       title={`클릭하여 ${label} 복사 · ${value}`}
                     >
-                      {label}{' '}
-                      <b className='text-background tabular-nums'>{value}</b>
+                      {copiedKey === label ? (
+                        <span className='inline-flex items-center gap-1 text-emerald-400 duration-200 animate-in fade-in-0 zoom-in-95'>
+                          <Check className='h-3 w-3' />
+                          복사됨
+                        </span>
+                      ) : (
+                        <span className='inline-flex items-center gap-1 duration-200 animate-in fade-in-0'>
+                          {label}{' '}
+                          <b className='text-background tabular-nums'>
+                            {value}
+                          </b>
+                        </span>
+                      )}
                     </button>
                   ))}
                 </>
@@ -558,8 +587,17 @@ export function DailyReportTable({
                 className='inline-flex flex-shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-background/70 transition-colors hover:bg-background/15 hover:text-background'
                 title='선택 영역 복사 (⌘C)'
               >
-                <Copy className='h-3 w-3' />
-                복사
+                {copiedKey === '__range__' ? (
+                  <span className='inline-flex items-center gap-1 text-emerald-400 duration-200 animate-in fade-in-0 zoom-in-95'>
+                    <Check className='h-3 w-3' />
+                    복사됨
+                  </span>
+                ) : (
+                  <span className='inline-flex items-center gap-1'>
+                    <Copy className='h-3 w-3' />
+                    복사
+                  </span>
+                )}
               </button>
               <button
                 type='button'
