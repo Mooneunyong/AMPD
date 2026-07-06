@@ -372,7 +372,7 @@ export function DailyReportTable({
                     className={`whitespace-nowrap ${
                       isDateHeader(header) ? 'sticky left-0 z-30 bg-muted' : ''
                     } ${index >= 1 && index <= 4 ? 'text-center' : ''}`}
-                    style={index === 0 ? { minWidth: '128px' } : undefined}
+                    style={index === 0 ? { minWidth: '112px' } : undefined}
                   >
                     {header}
                   </TableHead>
@@ -435,7 +435,7 @@ export function DailyReportTable({
                           >
                             {m ? (
                               <div className='flex items-center gap-2'>
-                                <span className='w-24'>{m[1]}</span>
+                                <span className='tabular-nums'>{m[1]}</span>
                                 <span className='text-muted-foreground'>
                                   ({m[2]})
                                 </span>
