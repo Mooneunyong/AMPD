@@ -405,13 +405,11 @@ export function DailyReportTable({
                     className={`whitespace-nowrap ${
                       isDateHeader(header) ? 'sticky left-0 z-30 bg-muted' : ''
                     } ${index >= 1 && index <= 4 ? 'text-center' : ''}`}
-                    style={index === 0 ? { minWidth: '112px' } : undefined}
+                    style={index === 0 ? { width: '1px' } : undefined}
                   >
                     {header}
                   </TableHead>
                 ))}
-                {/* 스페이서: 남는 가로 공간을 흡수해 실제 열이 늘어나지 않게 함 */}
-                <TableHead aria-hidden className='w-full p-0' />
               </TableRow>
             </TableHeader>
             <TableBody className={TABLE_STYLES.body}>
@@ -445,9 +443,14 @@ export function DailyReportTable({
                         !isDateCol && isRoasColumn(header)
                           ? roasBgStyle(cellValue)
                           : undefined;
+                      // Date 열은 width:1px 로 내용 너비에 고정 → 남는 폭은
+                      // 나머지(숫자) 열들이 나눠 가져 빈 영역 없이 채움
+                      const widthStyle = isDateCol
+                        ? { width: '1px' as const }
+                        : undefined;
                       const cellStyle: React.CSSProperties | undefined =
-                        baseStyle || overlay
-                          ? { ...baseStyle, ...overlay }
+                        baseStyle || overlay || widthStyle
+                          ? { ...baseStyle, ...overlay, ...widthStyle }
                           : undefined;
 
                       const handlers = {
@@ -523,8 +526,6 @@ export function DailyReportTable({
                         </TableCell>
                       );
                     })}
-                    {/* 스페이서 셀 (헤더 스페이서와 짝) */}
-                    <TableCell aria-hidden className='p-0' />
                   </TableRow>
                 );
               })}
