@@ -16,12 +16,21 @@ export const parseRoasPercent = (val: unknown): number | null => {
   return hasPercent ? n / 100 : n;
 };
 
-// ROAS 값에 따른 배경색: 0% → 투명, 100% 이상 → 가장 진한 녹색
+// ROAS 값 스타일:
+// - 텍스트: 진한 초록(green-700) — 값이 있으면 항상 적용
+// - 배경: 0% → 투명, 100% 이상 → 가장 진한 녹색(green-500, 투명도 0.6 상한)
 export const roasBgStyle = (
   val: unknown
 ): React.CSSProperties | undefined => {
   const num = parseRoasPercent(val);
-  if (num === null || num <= 0) return undefined;
-  const opacity = Math.min(num, 1) * 0.6;
-  return { backgroundColor: `rgba(34, 197, 94, ${opacity})` };
+  if (num === null) return undefined;
+  const style: React.CSSProperties = {
+    color: 'rgb(21, 128, 61)', // Tailwind green-700 (진한 초록)
+    fontWeight: 600,
+  };
+  if (num > 0) {
+    const opacity = Math.min(num, 1) * 0.6;
+    style.backgroundColor = `rgba(34, 197, 94, ${opacity})`;
+  }
+  return style;
 };
