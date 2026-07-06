@@ -503,57 +503,57 @@ export function DailyReportTable({
           >
             <div
               ref={chipRef}
-              className={`flex max-w-[calc(100vw-3rem)] items-center gap-3 overflow-x-auto rounded-xl border bg-background/95 px-3 py-1.5 text-xs shadow-lg backdrop-blur-sm ${
+              className={`flex max-w-[calc(100vw-3rem)] items-center gap-3 overflow-x-auto rounded-xl bg-foreground px-3 py-1.5 text-xs text-background shadow-lg ${
                 dragging ? 'pointer-events-none' : 'pointer-events-auto'
               }`}
             >
-              <span className='whitespace-nowrap text-muted-foreground'>
+              <span className='whitespace-nowrap text-background/60'>
                 {stats.cellCount}칸 선택
               </span>
               {stats.count > 0 ? (
                 <>
-                  <span className='h-3.5 w-px flex-shrink-0 bg-border' />
-                  <span className='whitespace-nowrap text-muted-foreground'>
+                  <span className='h-3.5 w-px flex-shrink-0 bg-background/25' />
+                  <span className='whitespace-nowrap text-background/60'>
                     개수{' '}
-                    <b className='text-foreground tabular-nums'>
+                    <b className='text-background tabular-nums'>
                       {stats.count}
                     </b>
                   </span>
-                  <span className='whitespace-nowrap text-muted-foreground'>
+                  <span className='whitespace-nowrap text-background/60'>
                     합계{' '}
-                    <b className='text-foreground tabular-nums'>
+                    <b className='text-background tabular-nums'>
                       {fmt(stats.sum, stats.f)}
                     </b>
                   </span>
-                  <span className='whitespace-nowrap text-muted-foreground'>
+                  <span className='whitespace-nowrap text-background/60'>
                     평균{' '}
-                    <b className='text-foreground tabular-nums'>
+                    <b className='text-background tabular-nums'>
                       {fmt(stats.avg, stats.f)}
                     </b>
                   </span>
-                  <span className='whitespace-nowrap text-muted-foreground'>
+                  <span className='whitespace-nowrap text-background/60'>
                     최소{' '}
-                    <b className='text-foreground tabular-nums'>
+                    <b className='text-background tabular-nums'>
                       {fmt(stats.min, stats.f)}
                     </b>
                   </span>
-                  <span className='whitespace-nowrap text-muted-foreground'>
+                  <span className='whitespace-nowrap text-background/60'>
                     최대{' '}
-                    <b className='text-foreground tabular-nums'>
+                    <b className='text-background tabular-nums'>
                       {fmt(stats.max, stats.f)}
                     </b>
                   </span>
                 </>
               ) : (
-                <span className='whitespace-nowrap text-muted-foreground'>
+                <span className='whitespace-nowrap text-background/60'>
                   · 숫자 셀 없음
                 </span>
               )}
-              <span className='h-3.5 w-px flex-shrink-0 bg-border' />
+              <span className='h-3.5 w-px flex-shrink-0 bg-background/25' />
               <button
                 type='button'
                 onClick={copySelection}
-                className='inline-flex flex-shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground'
+                className='inline-flex flex-shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-background/70 transition-colors hover:bg-background/15 hover:text-background'
                 title='선택 영역 복사 (⌘C)'
               >
                 <Copy className='h-3 w-3' />
@@ -562,7 +562,7 @@ export function DailyReportTable({
               <button
                 type='button'
                 onClick={clearSel}
-                className='inline-flex flex-shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground'
+                className='inline-flex flex-shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-background/70 transition-colors hover:bg-background/15 hover:text-background'
                 title='선택 해제 (Esc)'
               >
                 <X className='h-3 w-3' />
