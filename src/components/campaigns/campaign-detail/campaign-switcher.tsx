@@ -8,7 +8,14 @@
  * 권한 정책 — 관리자는 전체, AM 은 본인 담당 만 (`getCampaignList` 로 분기됨)
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { ChevronsUpDown, Search } from 'lucide-react';
@@ -80,7 +87,7 @@ export function CampaignSwitcher({ currentCampaign }: CampaignSwitcherProps) {
         game_logo_url: c.game_logo_url ?? null,
         game_name: c.game_name ?? null,
       }));
-      // 정렬: status 우선순위 → 게임명 → 지역 우선순위(KR→JP→TW→US...)
+      // 정렬: 광고주 → status 우선순위 → 게임명 → 지역 우선순위(KR→JP→TW→US...)
       const statusOrder: Record<string, number> = {
         ongoing: 0,
         planning: 1,
@@ -97,11 +104,19 @@ export function CampaignSwitcher({ currentCampaign }: CampaignSwitcherProps) {
       const baseName = (c: CampaignListItem) =>
         c.region ? c.name.replace(new RegExp(`_${c.region}$`), '') : c.name;
       compact.sort((a, b) => {
+        // 1) 광고주(회사)명 기준 그룹
+        const companyCmp = (a.account_company ?? '').localeCompare(
+          b.account_company ?? ''
+        );
+        if (companyCmp !== 0) return companyCmp;
+        // 2) 상태
         const aS = statusOrder[a.status] ?? 99;
         const bS = statusOrder[b.status] ?? 99;
         if (aS !== bS) return aS - bS;
+        // 3) 게임명
         const nameCmp = baseName(a).localeCompare(baseName(b));
         if (nameCmp !== 0) return nameCmp;
+        // 4) 지역
         const aR = regionOrder[a.region ?? ''] ?? 99;
         const bR = regionOrder[b.region ?? ''] ?? 99;
         if (aR !== bR) return aR - bR;
@@ -261,23 +276,33 @@ export function CampaignSwitcher({ currentCampaign }: CampaignSwitcherProps) {
             filtered.map((c, idx) => {
               const isCurrent = c.id === currentCampaign.id;
               const isHighlighted = idx === highlightIdx;
+              // 광고주가 바뀌는 지점마다 그룹 헤더 삽입
+              const company = c.account_company || '기타';
+              const showHeader =
+                idx === 0 ||
+                (filtered[idx - 1].account_company || '기타') !== company;
               return (
-                <button
-                  key={c.id}
-                  ref={(el) => {
-                    itemRefs.current[idx] = el;
-                  }}
-                  type='button'
-                  onClick={() => handleSelect(c.id)}
-                  onMouseEnter={() => setHighlightIdx(idx)}
-                  className={`w-full text-left px-2 py-2 text-sm flex items-center gap-2.5 rounded-xl transition-colors ${
-                    isHighlighted
-                      ? 'bg-accent text-accent-foreground'
-                      : isCurrent
-                      ? 'bg-accent/40'
-                      : 'hover:bg-accent/60'
-                  }`}
-                >
+                <Fragment key={c.id}>
+                  {showHeader && (
+                    <div className='sticky top-0 z-10 bg-background/95 backdrop-blur-sm px-2 pt-2 pb-1 text-[11px] font-semibold text-muted-foreground'>
+                      {company}
+                    </div>
+                  )}
+                  <button
+                    ref={(el) => {
+                      itemRefs.current[idx] = el;
+                    }}
+                    type='button'
+                    onClick={() => handleSelect(c.id)}
+                    onMouseEnter={() => setHighlightIdx(idx)}
+                    className={`w-full text-left px-2 py-2 text-sm flex items-center gap-2.5 rounded-xl transition-colors ${
+                      isHighlighted
+                        ? 'bg-accent text-accent-foreground'
+                        : isCurrent
+                        ? 'bg-accent/40'
+                        : 'hover:bg-accent/60'
+                    }`}
+                  >
                   {/* 게임 로고 */}
                   {c.game_logo_url ? (
                     <div className='w-7 h-7 rounded-lg border border-border overflow-hidden flex items-center justify-center bg-muted flex-shrink-0'>
@@ -313,10 +338,11 @@ export function CampaignSwitcher({ currentCampaign }: CampaignSwitcherProps) {
                         {c.name}
                       </span>
                     </div>
-                    <div className='text-xs text-muted-foreground truncate pl-3'>
-                      {c.account_company || '—'}
-                      {c.region ? ` · ${c.region}` : ''}
-                    </div>
+                    {c.region && (
+                      <div className='text-xs text-muted-foreground truncate pl-3'>
+                        {c.region}
+                      </div>
+                    )}
                   </div>
 
                   {isCurrent && (
@@ -324,7 +350,8 @@ export function CampaignSwitcher({ currentCampaign }: CampaignSwitcherProps) {
                       현재
                     </span>
                   )}
-                </button>
+                  </button>
+                </Fragment>
               );
             })}
         </div>
