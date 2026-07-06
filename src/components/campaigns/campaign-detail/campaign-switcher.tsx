@@ -260,8 +260,8 @@ export function CampaignSwitcher({ currentCampaign }: CampaignSwitcherProps) {
           </div>
         </div>
 
-        {/* 리스트 */}
-        <div ref={listRef} className='max-h-[400px] overflow-y-auto p-1'>
+        {/* 리스트 — 상단 패딩 제거(sticky 헤더가 검색창에 밀착) */}
+        <div ref={listRef} className='max-h-[400px] overflow-y-auto px-1 pb-1'>
           {loading && (
             <div className='px-3 py-6 text-center text-xs text-muted-foreground'>
               불러오는 중...
@@ -284,7 +284,11 @@ export function CampaignSwitcher({ currentCampaign }: CampaignSwitcherProps) {
               return (
                 <Fragment key={c.id}>
                   {showHeader && (
-                    <div className='sticky top-0 z-10 bg-background/95 backdrop-blur-sm px-2 pt-2 pb-1 text-[11px] font-semibold text-muted-foreground'>
+                    <div
+                      className={`sticky top-0 z-10 bg-background px-2 pb-1 text-[11px] font-semibold text-muted-foreground ${
+                        idx === 0 ? 'pt-1' : 'pt-2'
+                      }`}
+                    >
                       {company}
                     </div>
                   )}
