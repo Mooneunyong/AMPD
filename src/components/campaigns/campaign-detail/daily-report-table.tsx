@@ -230,50 +230,57 @@ export function DailyReportTable({
   }, [bounds, data, headers]);
 
   // 선택 영역을 따라 요약 칩 위치 계산
-  // - 기본: 선택 하단(드래그 중인 열) 바로 아래
-  // - 아래 공간 부족 시 선택 위로 뒤집기
+  // - 세로: 선택 하단 바로 아래 (공간 부족 시 선택 위로 뒤집기)
+  // - 가로: 선택 영역 가로 중앙 정렬 (드래그 방향과 무관)
   // - 컨테이너 밖으로 나가지 않도록 클램프
   const recomputeChip = useCallback(() => {
     const container = containerRef.current;
-    if (!container || !bounds || !focusCell) {
+    if (!container || !bounds) {
       setChipPos(null);
       return;
     }
-    const col = focusCell.c;
-    const bottomEl = container.querySelector<HTMLElement>(
-      `[data-cell="${bounds.r1}-${col}"]`
+    // 선택의 하단 좌/우 끝, 상단 좌 끝 셀
+    const blEl = container.querySelector<HTMLElement>(
+      `[data-cell="${bounds.r1}-${bounds.c0}"]`
     );
-    const topEl = container.querySelector<HTMLElement>(
-      `[data-cell="${bounds.r0}-${col}"]`
+    const brEl = container.querySelector<HTMLElement>(
+      `[data-cell="${bounds.r1}-${bounds.c1}"]`
     );
-    if (!bottomEl || !topEl) {
+    const tlEl = container.querySelector<HTMLElement>(
+      `[data-cell="${bounds.r0}-${bounds.c0}"]`
+    );
+    if (!blEl || !brEl || !tlEl) {
       setChipPos(null);
       return;
     }
     const cRect = container.getBoundingClientRect();
-    const bRect = bottomEl.getBoundingClientRect();
-    const tRect = topEl.getBoundingClientRect();
+    const blRect = blEl.getBoundingClientRect();
+    const brRect = brEl.getBoundingClientRect();
+    const tlRect = tlEl.getBoundingClientRect();
     const chipW = chipRef.current?.offsetWidth ?? 340;
     const chipH = chipRef.current?.offsetHeight ?? 34;
     const pad = 8;
     const gap = 6;
 
     // 세로: 선택 아래 → 넘치면 선택 위
-    const below = bRect.bottom - cRect.top + gap;
-    const above = tRect.top - cRect.top - chipH - gap;
+    const below = blRect.bottom - cRect.top + gap;
+    const above = tlRect.top - cRect.top - chipH - gap;
     let top: number;
     if (below + chipH + pad <= cRect.height) top = below;
     else if (above >= pad) top = above;
     else top = cRect.height - chipH - pad; // 둘 다 안 되면 하단 고정
     top = Math.min(Math.max(pad, top), cRect.height - chipH - pad);
 
-    // 가로: 드래그 열 위치에서 시작, 넘치면 클램프
-    let left = bRect.left - cRect.left;
+    // 가로: 선택 영역 중앙에 칩 중앙을 맞춤
+    const selLeft = blRect.left - cRect.left;
+    const selRight = brRect.right - cRect.left;
+    const center = (selLeft + selRight) / 2;
+    let left = center - chipW / 2;
     left = Math.min(Math.max(pad, left), cRect.width - chipW - pad);
     if (!Number.isFinite(left)) left = pad;
 
     setChipPos({ top, left });
-  }, [bounds, focusCell]);
+  }, [bounds]);
 
   useLayoutEffect(() => {
     recomputeChip();
