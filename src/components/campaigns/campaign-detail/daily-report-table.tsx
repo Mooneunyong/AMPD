@@ -99,7 +99,9 @@ export function DailyReportTable({
         <TableWrapper fillHeight className='max-h-full h-full'>
           <Table
             style={{ width: 'max-content', minWidth: '100%' }}
-            className={dragging ? 'select-none' : ''}
+            className={`[&_td]:cursor-default [&_th]:cursor-default ${
+              dragging ? 'select-none' : ''
+            }`}
           >
             <TableHeader className={TABLE_STYLES.header}>
               <TableRow>
