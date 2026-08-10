@@ -628,6 +628,7 @@ export default function AccountDetailPage() {
                   daily_report_url: c.daily_report_url ?? null,
                   game_package_identifier:
                     c.game_package_identifier ?? null,
+                  end_date: c.end_date ?? null,
                 })),
               });
               toast.success(

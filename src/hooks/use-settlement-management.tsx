@@ -22,6 +22,8 @@ export interface SettlementCampaignInput {
   campaign_type: string | null;
   daily_report_url: string | null;
   game_package_identifier: string | null;
+  /** 캠페인 종료일(YYYY-MM-DD). 있으면 이 날짜 이후는 정산에서 제외. */
+  end_date: string | null;
 }
 
 export interface CreateSettlementInput {
@@ -133,6 +135,8 @@ async function buildLinesForCampaign(
       if (!d) return null;
       const iso = toIsoDate(d);
       if (iso < periodFrom || iso > periodTo) return null;
+      // 종료된 캠페인은 end_date 이후(잔여 attribution 등)를 청구에서 제외
+      if (campaign.end_date && iso > campaign.end_date) return null;
       const cpi = parseNum(row[cpiHeader]);
       if (cpi === null || cpi <= 0) return null;
       const install = installHeader ? parseNum(row[installHeader]) ?? 0 : 0;
