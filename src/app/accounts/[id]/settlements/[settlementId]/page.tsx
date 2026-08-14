@@ -889,10 +889,17 @@ export default function SettlementDetailPage() {
                                   field: 'amount',
                                   raw,
                                 });
-                                // 금액 직접 수정 → 입력값으로 덮어씀 (디덕션 등, 로컬만)
+                                const amt =
+                                  Number(raw.replace(/[^0-9.\-]/g, '')) || 0;
+                                const rate = Number(l.rate);
+                                // 금액 변경 → 수량 = 금액 / rate 재계산 (정수 반올림),
+                                // 금액은 입력값 유지 (로컬만)
                                 patchLine(l.id, {
-                                  amount:
-                                    Number(raw.replace(/[^0-9.\-]/g, '')) || 0,
+                                  amount: amt,
+                                  quantity:
+                                    rate > 0
+                                      ? Math.max(0, Math.round(amt / rate))
+                                      : Number(l.quantity),
                                 });
                               }}
                               onBlur={() => setEditingCell(null)}
