@@ -133,6 +133,17 @@ export default function SettlementDetailPage() {
   const [showDelete, setShowDelete] = useState(false);
   const [showIssueInvoice, setShowIssueInvoice] = useState(false);
   const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
+  // 인라인 편집: 현재 편집 중인 셀의 원본 문자열(소수점 입력 보존용)
+  const [editingCell, setEditingCell] = useState<{
+    id: string;
+    field: 'quantity' | 'amount';
+    raw: string;
+  } | null>(null);
+  // persistLine 이 최신 lines 를 읽도록 ref 로 미러링
+  const settlementRef = useRef<SettlementDetail | null>(null);
+  useEffect(() => {
+    settlementRef.current = settlement;
+  }, [settlement]);
 
   const loadInvoices = useCallback(async () => {
     try {
@@ -249,6 +260,59 @@ export default function SettlementDetailPage() {
       setShowDelete(false);
     }
   };
+
+  // 라인 로컬 수정 (수량/금액)
+  const patchLine = useCallback(
+    (lineId: string, patch: Partial<SettlementLineRow>) => {
+      setSettlement((prev) =>
+        prev
+          ? {
+              ...prev,
+              lines: prev.lines.map((l) =>
+                l.id === lineId ? { ...l, ...patch } : l
+              ),
+            }
+          : prev
+      );
+    },
+    []
+  );
+
+  // 라인 저장 (금액 반올림 → settlement_lines 업데이트 + settlements.total_amount 재계산)
+  const persistLine = useCallback(
+    async (lineId: string) => {
+      const cur = settlementRef.current;
+      const line = cur?.lines.find((l) => l.id === lineId);
+      if (!cur || !line) return;
+      const roundedAmount = +Number(line.amount ?? 0).toFixed(2);
+      const qty = Math.max(0, Math.floor(Number(line.quantity ?? 0)));
+      if (roundedAmount !== Number(line.amount) || qty !== Number(line.quantity)) {
+        patchLine(lineId, { amount: roundedAmount, quantity: qty });
+      }
+      const total = cur.lines.reduce(
+        (s, l) =>
+          s + Number(l.id === lineId ? roundedAmount : l.amount ?? 0),
+        0
+      );
+      const supabase = createClient();
+      const [{ error: e1 }, { error: e2 }] = await Promise.all([
+        supabase
+          .from('settlement_lines')
+          .update({ quantity: qty, amount: roundedAmount })
+          .eq('id', lineId),
+        supabase
+          .from('settlements')
+          .update({ total_amount: +total.toFixed(2) })
+          .eq('id', settlementId),
+      ]);
+      if (e1 || e2) {
+        toast.error(`저장 실패: ${e1?.message ?? e2?.message}`);
+      } else {
+        toast.success('저장되었습니다.');
+      }
+    },
+    [settlementId, patchLine]
+  );
 
   const linesTotal = useMemo(() => {
     if (!settlement) return 0;
@@ -671,13 +735,100 @@ export default function SettlementDetailPage() {
                         className='whitespace-nowrap text-right tabular-nums'
                         data-copy={String(l.quantity)}
                       >
-                        {l.quantity.toLocaleString()}
+                        <input
+                          type='text'
+                          inputMode='numeric'
+                          aria-label='Quantity'
+                          value={
+                            editingCell?.id === l.id &&
+                            editingCell.field === 'quantity'
+                              ? editingCell.raw
+                              : String(Number(l.quantity))
+                          }
+                          onFocus={(e) => {
+                            setEditingCell({
+                              id: l.id,
+                              field: 'quantity',
+                              raw: String(Number(l.quantity)),
+                            });
+                            e.currentTarget.select();
+                          }}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            setEditingCell({
+                              id: l.id,
+                              field: 'quantity',
+                              raw,
+                            });
+                            const q = Math.max(
+                              0,
+                              Math.floor(
+                                Number(raw.replace(/[^0-9]/g, '')) || 0
+                              )
+                            );
+                            // 수량 변경 → 금액 = rate × 수량 재계산
+                            patchLine(l.id, {
+                              quantity: q,
+                              amount: +(Number(l.rate) * q).toFixed(2),
+                            });
+                          }}
+                          onBlur={() => {
+                            setEditingCell(null);
+                            persistLine(l.id);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') e.currentTarget.blur();
+                          }}
+                          className='w-20 rounded border border-transparent bg-transparent px-1.5 py-0.5 text-right tabular-nums outline-none transition-colors hover:border-border focus:border-primary focus:bg-background'
+                        />
                       </TableCell>
                       <TableCell
                         className='whitespace-nowrap text-right tabular-nums font-medium'
                         data-copy={String(Number(l.amount))}
                       >
-                        {formatAmount(Number(l.amount))}
+                        <span className='inline-flex items-center justify-end'>
+                          <span className='text-muted-foreground'>$</span>
+                          <input
+                            type='text'
+                            inputMode='decimal'
+                            aria-label='Amount'
+                            value={
+                              editingCell?.id === l.id &&
+                              editingCell.field === 'amount'
+                                ? editingCell.raw
+                                : Number(l.amount).toFixed(2)
+                            }
+                            onFocus={(e) => {
+                              setEditingCell({
+                                id: l.id,
+                                field: 'amount',
+                                raw: String(Number(l.amount)),
+                              });
+                              e.currentTarget.select();
+                            }}
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              setEditingCell({
+                                id: l.id,
+                                field: 'amount',
+                                raw,
+                              });
+                              // 금액 직접 수정 → 입력값으로 덮어씀 (디덕션 등)
+                              patchLine(l.id, {
+                                amount:
+                                  Number(raw.replace(/[^0-9.\-]/g, '')) || 0,
+                              });
+                            }}
+                            onBlur={() => {
+                              setEditingCell(null);
+                              persistLine(l.id);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') e.currentTarget.blur();
+                            }}
+                            className='w-24 rounded border border-transparent bg-transparent px-1 py-0.5 text-right tabular-nums outline-none transition-colors hover:border-border focus:border-primary focus:bg-background'
+                          />
+                        </span>
                       </TableCell>
                     </TableRow>
                   ))}
