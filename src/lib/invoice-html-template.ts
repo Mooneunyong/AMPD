@@ -24,12 +24,6 @@ const formatAmount = (n: number) =>
     maximumFractionDigits: 2,
   })}`;
 
-const formatRate = (n: number) =>
-  `$ ${n.toLocaleString('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 4,
-  })}`;
-
 const escapeHtml = (s: string | null | undefined): string => {
   if (!s) return '';
   return s
@@ -53,12 +47,10 @@ export function buildInvoiceHtml(data: InvoiceTemplateData): string {
         <tr>
           <td>${escapeHtml(l.description)}</td>
           <td>${escapeHtml(l.model)}</td>
-          <td class="num right">${formatRate(Number(l.rate))}</td>
           <td>${escapeHtml(l.geo)}</td>
           <td class="num nowrap">${escapeHtml(l.duration_from)} ~ ${escapeHtml(
             l.duration_to
           )}</td>
-          <td class="num right">${l.quantity.toLocaleString()}</td>
           <td class="num right">${formatAmount(Number(l.amount))}</td>
         </tr>
       `
@@ -69,7 +61,7 @@ export function buildInvoiceHtml(data: InvoiceTemplateData): string {
     .map(
       () => `
         <tr class="empty">
-          <td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td>
+          <td>&nbsp;</td><td></td><td></td><td></td><td></td>
         </tr>
       `
     )
@@ -217,10 +209,8 @@ export function buildInvoiceHtml(data: InvoiceTemplateData): string {
         <tr>
           <th>DESCRIPTION</th>
           <th>Model</th>
-          <th class="right">Rate</th>
           <th>GEO</th>
           <th>Duration</th>
-          <th class="right">Quantity</th>
           <th class="right">Amount</th>
         </tr>
       </thead>
